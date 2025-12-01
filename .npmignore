@@ -1,0 +1,32 @@
+# Source files
+src/
+tsconfig.json
+
+# Tests
+**/*.test.ts
+**/*.test.tsx
+**/__tests__/
+coverage/
+
+# Development
+.env
+.env.local
+.eslintrc.json
+.prettierrc
+jest.config.js
+
+# Documentation
+CONTRIBUTING.md
+claude.md
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

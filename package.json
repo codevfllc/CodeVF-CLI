@@ -1,0 +1,68 @@
+{
+  "name": "codevf-cli",
+  "version": "1.0.0",
+  "description": "CodeVF CLI - Live debugging with vetted engineers",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "codevf": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "test": "jest",
+    "lint": "eslint src --ext .ts,.tsx",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "cli",
+    "debugging",
+    "code-review",
+    "live-support"
+  ],
+  "author": "CodeVF",
+  "license": "MIT",
+  "dependencies": {
+    "yargs": "^17.7.2",
+    "ink": "^4.4.1",
+    "react": "^18.2.0",
+    "ws": "^8.16.0",
+    "axios": "^1.6.7",
+    "ora": "^8.0.1",
+    "chalk": "^5.3.0",
+    "prompts": "^2.4.2",
+    "archiver": "^6.0.1",
+    "open": "^10.0.3",
+    "dotenv": "^16.4.1",
+    "uuid": "^9.0.1",
+    "date-fns": "^3.3.1",
+    "simple-git": "^3.22.0",
+    "ignore": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@types/node": "^20.11.16",
+    "@types/ws": "^8.5.10",
+    "@types/prompts": "^2.4.9",
+    "@types/archiver": "^6.0.2",
+    "@types/uuid": "^9.0.7",
+    "@types/yargs": "^17.0.32",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.1",
+    "@typescript-eslint/eslint-plugin": "^6.20.0",
+    "@typescript-eslint/parser": "^6.20.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.5",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.12",
+    "ts-jest": "^29.1.2",
+    "ink-testing-library": "^3.0.0",
+    "react-devtools-core": "^4.28.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
