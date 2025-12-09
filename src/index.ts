@@ -35,6 +35,7 @@ import {
 } from './modules/commandHandler.js';
 
 const args = hideBin(process.argv);
+const SETUP_ONLY_MODE = true;
 
 /**
  * Safely loads config without throwing errors
@@ -201,6 +202,15 @@ async function runInteractiveMode() {
  * Command-line argument mode - handle specific commands
  */
 if (args.length === 0) {
+  if (SETUP_ONLY_MODE) {
+    console.log(
+      chalk.dim(
+        'CodeVF CLI is in beta. Run "codevf setup" to configure Claude Code integration.'
+      )
+    );
+    process.exit(0);
+  }
+
   // Check if this is the first run
   if (isFirstRun()) {
     welcomeCommand().catch(handleError);
@@ -208,35 +218,133 @@ if (args.length === 0) {
     runInteractiveMode();
   }
 } else {
-  yargs(args)
+  const cli = yargs(args)
     .scriptName('codevf')
     .version(CLI_VERSION)
     .usage('$0 <command> [options]')
-    .epilogue('For first-time setup, run: codevf welcome\nDocumentation: https://docs.codevf.com')
-    .command(
-      'login',
-      'Authenticate with CodeVF (for CLI usage)',
-      () => {},
-      async () => {
-        try {
-          await loginCommand();
-        } catch (error) {
-          handleError(error);
+    .epilogue('For first-time setup, run: codevf welcome\nDocumentation: https://docs.codevf.com');
+
+  if (!SETUP_ONLY_MODE) {
+    cli
+      .command(
+        'login',
+        'Authenticate with CodeVF (for CLI usage)',
+        () => {},
+        async () => {
+          try {
+            await loginCommand();
+          } catch (error) {
+            handleError(error);
+          }
         }
-      }
-    )
-    .command(
-      'logout',
-      'Clear local authentication',
-      () => {},
-      async () => {
-        try {
-          await logoutCommand();
-        } catch (error) {
-          handleError(error);
+      )
+      .command(
+        'logout',
+        'Clear local authentication',
+        () => {},
+        async () => {
+          try {
+            await logoutCommand();
+          } catch (error) {
+            handleError(error);
+          }
         }
-      }
-    )
+      )
+      .command(
+        'welcome',
+        'Show welcome screen and setup guide',
+        () => {},
+        async () => {
+          try {
+            await welcomeCommand();
+          } catch (error) {
+            handleError(error);
+          }
+        }
+      )
+      .command(
+        'init',
+        'Initialize CodeVF in your project',
+        () => {},
+        async () => {
+          try {
+            await initCommand();
+          } catch (error) {
+            handleError(error);
+          }
+        }
+      )
+      .command(
+        'sync',
+        'Sync your local changes with CodeVF',
+        (yargs) => {
+          return yargs.option('force', {
+            alias: 'f',
+            type: 'boolean',
+            description: 'Force sync even with uncommitted changes',
+            default: false,
+          });
+        },
+        async (argv) => {
+          try {
+            await syncCommand({ force: argv.force });
+          } catch (error) {
+            handleError(error);
+          }
+        }
+      )
+      .command(
+        'tasks',
+        'List open tasks (use /cancel <id> inside interactive mode)',
+        () => {},
+        async () => {
+          try {
+            await tasksCommand(undefined);
+          } catch (error) {
+            handleError(error);
+          }
+        }
+      )
+      .command(
+        'fix <issue>',
+        'Start a live debugging session',
+        (yargs) => {
+          return yargs
+            .positional('issue', {
+              type: 'string',
+              describe:
+                'Description of the issue to fix (or type commands like /human need help with X)',
+              demandOption: true,
+            })
+            .option('ai', {
+              type: 'boolean',
+              default: false,
+              describe: 'Route through local AI (opencode SDK) if enabled',
+            })
+            .option('no-start-server', {
+              type: 'boolean',
+              default: false,
+              describe: 'Do not auto-start opencode server; require existing server',
+            });
+        },
+        async (argv) => {
+          try {
+            if (argv.ai) {
+              const configManager = new ConfigManager();
+              const aiAgent = new AiAgent(configManager);
+              await aiAgent.run(argv.issue as string, { startServer: !argv['no-start-server'] });
+              return;
+            }
+            await fixCommand(argv.issue as string);
+          } catch (error) {
+            handleError(error);
+          }
+        }
+      )
+      .recommendCommands();
+  }
+
+  cli
     .command(
       'setup',
       'Configure MCP server for Claude Code integration',
@@ -249,100 +357,14 @@ if (args.length === 0) {
         }
       }
     )
-    .command(
-      'welcome',
-      'Show welcome screen and setup guide',
-      () => {},
-      async () => {
-        try {
-          await welcomeCommand();
-        } catch (error) {
-          handleError(error);
-        }
-      }
+    .demandCommand(
+      1,
+      chalk.yellow(
+        SETUP_ONLY_MODE
+          ? 'Run "codevf setup" to configure Claude Code integration (other commands disabled).'
+          : 'Run a command, e.g., "codevf fix \\"need help with X\\""'
+      )
     )
-    .command(
-      'init',
-      'Initialize CodeVF in your project',
-      () => {},
-      async () => {
-        try {
-          await initCommand();
-        } catch (error) {
-          handleError(error);
-        }
-      }
-    )
-    .command(
-      'sync',
-      'Sync your local changes with CodeVF',
-      (yargs) => {
-        return yargs.option('force', {
-          alias: 'f',
-          type: 'boolean',
-          description: 'Force sync even with uncommitted changes',
-          default: false,
-        });
-      },
-      async (argv) => {
-        try {
-          await syncCommand({ force: argv.force });
-        } catch (error) {
-          handleError(error);
-        }
-      }
-    )
-    .command(
-      'tasks',
-      'List open tasks (use /cancel <id> inside interactive mode)',
-      () => {},
-      async () => {
-        try {
-          await tasksCommand(undefined);
-        } catch (error) {
-          handleError(error);
-        }
-      }
-    )
-    .command(
-      'fix <issue>',
-      'Start a live debugging session',
-      (yargs) => {
-        return yargs
-          .positional('issue', {
-            type: 'string',
-            describe:
-              'Description of the issue to fix (or type commands like /human need help with X)',
-            demandOption: true,
-          })
-          .option('ai', {
-            type: 'boolean',
-            default: false,
-            describe: 'Route through local AI (opencode SDK) if enabled',
-          })
-          .option('no-start-server', {
-            type: 'boolean',
-            default: false,
-            describe: 'Do not auto-start opencode server; require existing server',
-          });
-      },
-      async (argv) => {
-        try {
-          if (argv.ai) {
-            const configManager = new ConfigManager();
-            const aiAgent = new AiAgent(configManager);
-            await aiAgent.run(argv.issue as string, { startServer: !argv['no-start-server'] });
-            return;
-          }
-          await fixCommand(argv.issue as string);
-        } catch (error) {
-          handleError(error);
-        }
-      }
-    )
-    .demandCommand(1, chalk.yellow('Run a command, e.g., "codevf fix \"need help with X\""'))
-    .recommendCommands()
-    .strict()
     .help()
     .alias('help', 'h')
     .alias('version', 'v')
@@ -352,5 +374,7 @@ if (args.length === 0) {
           'Report issues: https://github.com/codevf/cli/issues'
       )
     )
-    .parse();
+    .strict();
+
+  cli.parse();
 }
