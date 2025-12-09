@@ -8,7 +8,6 @@ import { RoutingMode, AgentMode, COMMAND_PREFIXES } from './constants.js';
 import { initCommand } from '../commands/init.js';
 import { tasksCommand } from '../commands/tasks.js';
 import { fixCommand } from '../commands/fix.js';
-import { handleCvf, handleCvfInstant, handleCvfChat } from '../commands/mcp-tools.js';
 import { renderHelpMenu } from '../ui/SessionUI.js';
 import { runWithCancelableSpinner } from '../ui/SessionUI.js';
 
@@ -106,25 +105,6 @@ export async function handleSlashCommand(
         routingMode: aiEnabled ? 'ai' as RoutingMode : context.routingMode
       }
     };
-  }
-
-  // MCP tool commands
-  if (trimmed === '/cvf' || trimmed.startsWith('/cvf ')) {
-    const message = trimmed.replace('/cvf', '').trim();
-    await handleCvf(message || undefined);
-    return { handled: true };
-  }
-
-  if (trimmed.startsWith('/cvf-instant')) {
-    const message = trimmed.replace('/cvf-instant', '').trim();
-    await handleCvfInstant(message || undefined);
-    return { handled: true };
-  }
-
-  if (trimmed.startsWith('/cvf-chat')) {
-    const message = trimmed.replace('/cvf-chat', '').trim();
-    await handleCvfChat(message || undefined);
-    return { handled: true };
   }
 
   // Exit commands

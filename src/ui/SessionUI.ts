@@ -112,10 +112,6 @@ export function renderQuickCommands(
       (agentMode === 'plan' ? chalk.green(' (active)') : '')
   );
 
-  console.log(chalk.white('  /cvf') + chalk.dim('        - CodeVF engineer tools menu'));
-  console.log(chalk.white('  /cvf-instant') + chalk.dim(' - Quick engineer validation (1-10 credits)'));
-  console.log(chalk.white('  /cvf-chat') + chalk.dim(' - Extended debugging session (4-1920 credits)'));
-
   console.log(chalk.white('  /?') + chalk.dim('      - Show all commands'));
   console.log(chalk.white('  /exit') + chalk.dim('   - Quit'));
   console.log();
@@ -149,13 +145,6 @@ export function renderHelpMenu(): void {
   console.log(chalk.bold.magenta('  📋 Task Management:'));
   console.log(chalk.white('    /tasks') + chalk.dim('    ') + chalk.cyan('List open tasks'));
   console.log(chalk.white('    /cancel <id>') + chalk.dim(' ') + chalk.red('Cancel a task'));
-  console.log();
-
-  console.log(chalk.bold.magenta('  🤝 MCP Tools (requires setup):'));
-  console.log(chalk.white('    /cvf') + chalk.dim('         ') + chalk.cyan('Show engineer tools menu'));
-  console.log(chalk.white('    /cvf <msg>') + chalk.dim('    ') + chalk.cyan('Quick validation with message'));
-  console.log(chalk.white('    /cvf-instant') + chalk.dim(' ') + chalk.cyan('Quick engineer validation (1-10 credits)'));
-  console.log(chalk.white('    /cvf-chat') + chalk.dim('    ') + chalk.blue('Extended debugging session (4-1920 credits)'));
   console.log();
 
   console.log(chalk.bold.magenta('  🛠️  Setup & Project:'));
