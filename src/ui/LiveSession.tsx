@@ -3,7 +3,8 @@ import { Box, Text, useInput, useApp } from 'ink';
 import { WebSocketClient } from '../modules/websocket.js';
 import { PermissionManager } from '../modules/permissions.js';
 import { ApiClient } from '../modules/api.js';
-import { TunnelManager, ActiveTunnel } from '../modules/tunnel.js';
+import { TunnelManager } from '../modules/tunnel.js';
+import { ActiveTunnel } from '../types/index.js';
 import * as fs from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -94,7 +95,7 @@ export const LiveSession: React.FC<LiveSessionProps> = ({
 
     setIsProcessingRequest(true);
     try {
-      const tunnel = await tunnelManager.createTunnel(port, subdomain);
+      const tunnel = await tunnelManager.createTunnel({ port, subdomain, taskId });
       setActiveTunnel(tunnel);
 
       const tunnelMessage = `🔗 Tunnel shared: ${tunnel.url} (port ${tunnel.port})`;
