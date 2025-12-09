@@ -35,7 +35,7 @@ import {
 } from './modules/commandHandler.js';
 
 const args = hideBin(process.argv);
-const SETUP_ONLY_MODE = true;
+const SETUP_ONLY_MODE = process.env.SETUP_ONLY_MODE !== 'false';
 
 /**
  * Safely loads config without throwing errors
