@@ -4,6 +4,7 @@
  */
 
 import { TasksApi } from '../../lib/api/tasks.js';
+import { ProjectsApi } from '../../lib/api/projects.js';
 import { WebSocketClient } from '../../lib/api/websocket.js';
 import { TokenManager } from '../../lib/auth/token-manager.js';
 import { logger } from '../../lib/utils/logger.js';
@@ -20,11 +21,13 @@ export interface InstantToolResult {
 
 export class InstantTool {
   private tasksApi: TasksApi;
+  private projectsApi: ProjectsApi;
   private tokenManager: TokenManager;
   private baseUrl: string;
 
-  constructor(tasksApi: TasksApi, tokenManager: TokenManager, baseUrl: string) {
+  constructor(tasksApi: TasksApi, projectsApi: ProjectsApi, tokenManager: TokenManager, baseUrl: string) {
     this.tasksApi = tasksApi;
+    this.projectsApi = projectsApi;
     this.tokenManager = tokenManager;
     this.baseUrl = baseUrl;
   }
@@ -50,11 +53,17 @@ export class InstantTool {
         };
       }
 
+      // Get or create a project for this task
+      logger.info('Getting or creating project for instant query');
+      const project = await this.projectsApi.getOrCreateDefault();
+      logger.info('Using project', { projectId: project.id, repoUrl: project.repoUrl });
+
       // Create task
       const task = await this.tasksApi.create({
         message: args.message,
         taskMode: 'realtime_answer',
         maxCredits,
+        projectId: project.id.toString(),
       });
 
       logger.info('Task created', { taskId: task.taskId });

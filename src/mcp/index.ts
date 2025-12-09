@@ -16,6 +16,7 @@ import { ConfigManager } from '../lib/config/manager.js';
 import { TokenManager } from '../lib/auth/token-manager.js';
 import { ApiClient } from '../lib/api/client.js';
 import { TasksApi } from '../lib/api/tasks.js';
+import { ProjectsApi } from '../lib/api/projects.js';
 import { InstantTool } from './tools/instant.js';
 import { ChatTool } from './tools/chat.js';
 import { logger, LogLevel } from '../lib/utils/logger.js';
@@ -50,7 +51,8 @@ async function main() {
   const apiClient = new ApiClient(config.baseUrl, tokenManager);
   const defaultProjectId = config.defaults?.projectId || '1';
   const tasksApi = new TasksApi(apiClient, config.baseUrl, defaultProjectId);
-  const instantTool = new InstantTool(tasksApi, tokenManager, config.baseUrl);
+  const projectsApi = new ProjectsApi(apiClient);
+  const instantTool = new InstantTool(tasksApi, projectsApi, tokenManager, config.baseUrl);
   const chatTool = new ChatTool(tasksApi, config.baseUrl);
 
   // Create MCP server
