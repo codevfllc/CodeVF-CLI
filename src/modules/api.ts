@@ -12,7 +12,7 @@ import {
 } from '../types/index.js';
 
 const API_BASE_URL = process.env.CODEVF_API_URL || 'https://api.codevf.com';
-console.log(API_BASE_URL)
+
 export class ApiClient {
   private client: AxiosInstance;
   private authManager: AuthManager;
@@ -46,15 +46,23 @@ export class ApiClient {
           throw new NetworkError('Cannot connect to CodeVF servers.\nPlease check your internet connection.');
         }
 
+        const data: any = error.response?.data || {};
+        const serverError = data?.error;
+        const help = data?.help ? `\n${data.help}` : '';
+
         if (error.response?.status === 401) {
-          throw new AuthError('Authentication failed.\nPlease run: codevf login');
+          throw new AuthError((serverError || 'Authentication failed.\nPlease run: codevf login') + help);
         }
 
         if (error.response?.status === 403) {
-          throw new AuthError('Access denied. Please check your permissions.');
+          throw new AuthError((serverError || 'Access denied. Please check your permissions.') + help);
         }
 
-        throw new NetworkError(`API request failed: ${error.message}`);
+        if (error.response?.status === 400) {
+          throw new NetworkError((serverError || `API request failed: ${error.message}`) + help);
+        }
+
+        throw new NetworkError((serverError || `API request failed: ${error.message}`) + help);
       }
     );
   }
@@ -108,9 +116,10 @@ export class ApiClient {
   }
 
   // Task endpoints
-  async createTask(request: CreateTaskRequest): Promise<CreateTaskResponse> {
+  async createTask(request: CreateTaskRequest): Promise<CreateTaskResponse & { warning?: string }> {
     const response = await this.client.post<ApiResponse<CreateTaskResponse>>('/api/cli/tasks/create', request);
-    return response.data.data!;
+    const data = response.data as any;
+    return { ...data.data, warning: data.data?.warning || data.warning };
   }
 
   async sendMessage(taskId: string, message: string): Promise<void> {
@@ -119,6 +128,10 @@ export class ApiClient {
 
   async approveCommand(taskId: string, command: string, approved: boolean): Promise<void> {
     await this.client.post(`/api/cli/tasks/${taskId}/approve-command`, { command, approved });
+  }
+
+  async cancelTask(taskId: string): Promise<void> {
+    await this.client.post(`/api/cli/tasks/${taskId}/cancel`);
   }
 
   async uploadFile(taskId: string, filePath: string, content: string): Promise<void> {
@@ -131,6 +144,17 @@ export class ApiClient {
 
   async rateEngineer(taskId: string, rating: number, feedback?: string): Promise<void> {
     await this.client.post(`/api/cli/tasks/${taskId}/rate`, { rating, feedback });
+  }
+
+  async getTaskStatus(taskId: string): Promise<{
+    taskId: number;
+    status: string;
+    actualCreditsUsed?: string;
+    response?: string;
+    engineerName?: string;
+  }> {
+    const response = await this.client.get<ApiResponse>(`/api/cli/tasks/${taskId}/status`);
+    return response.data.data;
   }
 
   getWebSocketUrl(taskId: string, token: string): string {

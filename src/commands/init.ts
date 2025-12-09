@@ -145,7 +145,7 @@ export async function initCommand(): Promise<void> {
         name: 'newRepoUrl',
         message: 'Repository URL:',
         initial: detectedRepoUrl,
-        validate: (value) => value.trim() ? true : 'Repository URL is required',
+        validate: (value) => (value.trim() ? true : 'Repository URL is required'),
       },
       {
         type: 'text',
@@ -200,7 +200,10 @@ export async function initCommand(): Promise<void> {
         { title: 'Rust', value: 'rust' },
         { title: 'Other', value: 'unknown' },
       ],
-      initial: detection.type === 'unknown' ? 0 : ['node', 'python', 'go', 'ruby', 'java', 'rust'].indexOf(detection.type),
+      initial:
+        detection.type === 'unknown'
+          ? 0
+          : ['node', 'python', 'go', 'ruby', 'java', 'rust'].indexOf(detection.type),
     },
     {
       type: 'text',
@@ -228,6 +231,12 @@ export async function initCommand(): Promise<void> {
     },
     {
       type: 'confirm',
+      name: 'enableAi',
+      message: 'Enable local AI for faster responses?',
+      initial: true,
+    },
+    {
+      type: 'confirm',
       name: 'uploadCode',
       message: 'Upload code snapshot for faster debugging?',
       initial: true,
@@ -236,6 +245,20 @@ export async function initCommand(): Promise<void> {
       type: 'confirm',
       name: 'allowBranchAccess',
       message: 'Allow engineers to access the "codevf" branch only?',
+      initial: true,
+    },
+    {
+      type: 'number',
+      name: 'devServerPort',
+      message: 'What port is your dev server running on? (for tunnel support)',
+      initial: 3000,
+      validate: (value) =>
+        value > 0 && value < 65536 ? true : 'Port must be between 1 and 65535',
+    },
+    {
+      type: 'confirm',
+      name: 'allowTunnels',
+      message: 'Allow engineers to request tunnel access to your local dev server?',
       initial: true,
     },
   ]);
@@ -274,6 +297,47 @@ export async function initCommand(): Promise<void> {
       branchMode: answers.allowBranchAccess ? 'codevf' : 'all',
       createdAt: new Date().toISOString(),
       version: '1',
+      devServerPort: answers.devServerPort || 3000,
+      tunnel: {
+        allowTunnels: answers.allowTunnels,
+        autoApprove: false, // Never auto-approve for security
+        allowedPorts: [answers.devServerPort || 3000],
+        maxDuration: 86400000, // 24 hours in milliseconds
+      },
+      ai: answers.enableAi
+        ? {
+            enabled: true,
+            provider: 'opencode',
+            sdk: {
+              apiKeyEnv: 'OPENCODE_API_KEY',
+              baseUrlEnv: 'OPENCODE_BASE_URL',
+              model: null,
+              defaultArgs: {},
+            },
+            defaultArgs: {},
+            maxRunMs: null,
+            logTranscripts: true,
+            tools: {
+              consultEngineer: {
+                enabled: true,
+                maxCreditsPerCall: 10,
+                highUrgencyCredits: 20,
+              },
+            },
+          }
+        : {
+            enabled: false,
+            provider: 'opencode',
+            sdk: {
+              apiKeyEnv: 'OPENCODE_API_KEY',
+              baseUrlEnv: 'OPENCODE_BASE_URL',
+              model: null,
+              defaultArgs: {},
+            },
+            defaultArgs: {},
+            maxRunMs: null,
+            logTranscripts: false,
+          },
     };
 
     configManager.saveConfig(config);
@@ -290,8 +354,28 @@ export async function initCommand(): Promise<void> {
     console.log(
       `${chalk.cyan('Allowed Tools:')} ${config.allowedTools.length > 0 ? config.allowedTools.join(', ') : chalk.dim('none')}`
     );
+    console.log(
+      `${chalk.cyan('Local AI (opencode):')} ${config.ai?.enabled ? 'Enabled' : chalk.dim('Disabled')}`
+    );
+    if (config.ai?.enabled) {
+      console.log(
+        `${chalk.cyan('AI Model:')} ${config.ai.sdk.model || chalk.dim('(none specified)')}`
+      );
+      console.log(
+        `${chalk.cyan('AI API Key Env:')} ${config.ai.sdk.apiKeyEnv || chalk.dim('(not set)')}`
+      );
+      console.log(
+        `${chalk.cyan('AI Logs:')} ${config.ai.logTranscripts ? 'Local transcripts on' : 'Off'}`
+      );
+      console.log(
+        `${chalk.cyan('Tools:')} consultEngineer (10 credits/call)`
+      );
+    }
     console.log(`${chalk.cyan('Code Uploaded:')} ${config.repoUploaded ? 'Yes' : 'No'}`);
     console.log(`${chalk.cyan('Branch Mode:')} ${config.branchMode}`);
+    console.log(
+      `${chalk.cyan('Tunnel Support:')} ${config.tunnel?.allowTunnels ? `Enabled (port ${config.devServerPort})` : chalk.dim('Disabled')}`
+    );
     console.log(chalk.dim('━'.repeat(60)));
 
     console.log(chalk.dim('\nNext steps:'));

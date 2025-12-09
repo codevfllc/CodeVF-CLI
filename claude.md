@@ -483,3 +483,25 @@ The CLI will **NOT**:
 - Session recording/playback
 - Multi-language support
 - Voice chat integration
+
+## 16. Hybrid Mode & AI Integration (In Development)
+
+The CLI now supports optional AI integration via OpenCode SDK with intelligent hybrid mode:
+
+### Key Features
+- **AI-First Routing**: Quick tasks handled by AI instantly (free with limits)
+- **Hybrid Mode**: Automatic fallback from AI to human engineers
+- **Context-Aware Handoff**: AI transcripts shared with engineers for faster resolution
+- **Vibe Mode**: Engineers help AI succeed by providing context or refining prompts
+
+### Documentation
+For detailed implementation plans, see:
+- [AI_AGENT_OPENCODE_PLAN.md](../AI_AGENT_OPENCODE_PLAN.md) - AI agent integration architecture
+- [HYBRID_MODE_IMPROVEMENT_PLAN.md](../HYBRID_MODE_IMPROVEMENT_PLAN.md) - Context handoff & engineer workflow
+
+### User Guide
+See [Hybrid Mode Usage Guide](../HYBRID_MODE_USAGE.md) (to be created) for:
+- When to use AI vs Human vs Hybrid mode
+- How context sharing works
+- Privacy controls and data handling
+- Pricing and credit usage

@@ -25,6 +25,10 @@ codevf fix "Users can't login after OAuth update"
 
 # Sync your code changes
 codevf sync
+
+# Share a local port with your engineer (during a session)
+# In the chat UI:
+# /tunnel 3000
 ```
 
 ## Commands
@@ -49,6 +53,7 @@ Start a live debugging session with a vetted engineer:
 - Real-time chat in your terminal
 - Engineer can request to run commands (with your approval)
 - Engineer can request to view files (with your approval)
+- Securely share a local port over the internet with `/tunnel <port>` when asked
 - Track credit usage in real-time
 - Rate the engineer when done
 
@@ -101,4 +106,4 @@ After running `codevf init`, configuration is stored in `.codevf/config.json`:
 
 ## License
 
-MIT
+Commercial license — see `LICENSE`. Use is limited to interacting with CodeVF services; no redistribution or competing uses.

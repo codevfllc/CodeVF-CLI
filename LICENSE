@@ -1,21 +1,30 @@
-MIT License
+CodeVF CLI Commercial License
+Version 1.0 — December 2025
 
-Copyright (c) 2025 CodeVF
+IMPORTANT: BY DOWNLOADING, INSTALLING, OR USING THE CODEVF CLI (“SOFTWARE”), YOU AGREE TO THESE TERMS. IF YOU DO NOT AGREE, DO NOT USE THE SOFTWARE.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. LICENSE GRANT. CodeVF, Inc. (“CodeVF”) grants you a limited, non-exclusive, non-transferable, revocable license to install and use the Software solely to access and interact with CodeVF’s services at https://codevf.com (the “Services”). All other rights are reserved.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. RESTRICTIONS. You may not (a) use the Software to build or operate any competing product or service; (b) sublicense, rent, lease, sell, distribute, or otherwise provide the Software to any third party; (c) use the Software with any service other than the CodeVF Services; (d) reverse engineer, decompile, or attempt to derive source code except to the extent permitted by law; (e) remove or obscure proprietary notices; or (f) use the Software to train models or for any unlawful, harmful, or infringing purpose.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. OWNERSHIP. CodeVF and its licensors retain all right, title, and interest in and to the Software and all related intellectual property rights. No rights are granted by implication or estoppel.
+
+4. FEES AND CREDITS. Use of the Services may require fees or credits. You are responsible for all fees, taxes, and charges incurred through your account. CodeVF may suspend or terminate access for non-payment.
+
+5. PRIVACY AND DATA. Use of the Software with the Services is subject to CodeVF’s applicable privacy notices and terms posted at https://codevf.com.
+
+6. TERM AND TERMINATION. This license is effective until terminated. CodeVF may suspend or terminate your access at any time for breach or if required by law. Upon termination, you must cease all use and destroy all copies of the Software.
+
+7. DISCLAIMER. TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED “AS IS” WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+8. LIMITATION OF LIABILITY. TO THE MAXIMUM EXTENT PERMITTED BY LAW, CODEVF WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR DATA, EVEN IF ADVISED OF THE POSSIBILITY. CODEVF’S TOTAL LIABILITY WILL NOT EXCEED THE GREATER OF (A) AMOUNTS PAID BY YOU TO CODEVF FOR THE SOFTWARE DURING THE 3 MONTHS PRIOR TO THE CLAIM, OR (B) $100.
+
+9. INDEMNITY. You will indemnify and hold CodeVF harmless from any third-party claims arising from your use of the Software in violation of these terms.
+
+10. EXPORT AND COMPLIANCE. You must comply with all applicable laws, including export control and anti-corruption laws. You represent you are not located in, under the control of, or a national or resident of any restricted country or on any prohibited list.
+
+11. GOVERNING LAW. These terms are governed by the laws of the State of California, excluding conflicts principles. The parties consent to the exclusive jurisdiction of the state and federal courts located in San Francisco County, California.
+
+12. UPDATES. CodeVF may update these terms from time to time. Continued use after an update constitutes acceptance.
+
+If you have questions about this license, contact legal@codevf.com.

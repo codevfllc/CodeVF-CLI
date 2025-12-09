@@ -1,32 +1,14 @@
-# Source files
-src/
-tsconfig.json
-
-# Tests
-**/*.test.ts
-**/*.test.tsx
-**/__tests__/
-coverage/
-
-# Development
-.env
-.env.local
-.eslintrc.json
-.prettierrc
-jest.config.js
-
-# Documentation
-CONTRIBUTING.md
-claude.md
-
-# Git
-.git/
-.gitignore
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
+# Exclude local/dev artifacts
+.claude
+.codevf
+.npm-cache
+.env*
+*.log
+node_modules
+src
+*.tsbuildinfo
+*.pem
+*.key
+*.priv
+*.crt
+*.pfx

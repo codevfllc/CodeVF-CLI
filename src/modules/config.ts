@@ -6,18 +6,21 @@ const CONFIG_DIR = '.codevf';
 const CONFIG_FILE = 'config.json';
 const LAST_SYNC_FILE = 'last_sync.json';
 const CACHE_DIR = 'cache';
+const LOGS_DIR = 'ai_logs';
 
 export class ConfigManager {
   private cwd: string;
   private configPath: string;
   private lastSyncPath: string;
   private cachePath: string;
+  private logsPath: string;
 
   constructor(cwd: string = process.cwd()) {
     this.cwd = cwd;
     this.configPath = path.join(cwd, CONFIG_DIR, CONFIG_FILE);
     this.lastSyncPath = path.join(cwd, CONFIG_DIR, LAST_SYNC_FILE);
     this.cachePath = path.join(cwd, CONFIG_DIR, CACHE_DIR);
+    this.logsPath = path.join(cwd, CONFIG_DIR, LOGS_DIR);
   }
 
   isInitialized(): boolean {
@@ -32,6 +35,10 @@ export class ConfigManager {
 
     if (!fs.existsSync(this.cachePath)) {
       fs.mkdirSync(this.cachePath, { recursive: true });
+    }
+
+    if (!fs.existsSync(this.logsPath)) {
+      fs.mkdirSync(this.logsPath, { recursive: true });
     }
   }
 
@@ -89,5 +96,10 @@ export class ConfigManager {
 
   getCacheDir(): string {
     return this.cachePath;
+  }
+
+  getLogsDir(): string {
+    this.ensureConfigDir();
+    return this.logsPath;
   }
 }
