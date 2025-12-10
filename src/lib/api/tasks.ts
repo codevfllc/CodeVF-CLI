@@ -44,6 +44,8 @@ export class TasksApi {
     logger.info('Creating task', {
       mode: options.taskMode,
       maxCredits: options.maxCredits,
+      requestedProjectId: options.projectId,
+      defaultProjectId: this.defaultProjectId,
     });
 
     const response = await this.client.post('/api/cli/tasks/create', {

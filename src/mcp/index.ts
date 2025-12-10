@@ -31,7 +31,7 @@ async function main() {
   }
 
   // Check if configured
-  const configManager = new ConfigManager('mcp-config.json');
+  const configManager = new ConfigManager('config.json');
   if (!configManager.exists()) {
     console.error('Error: Not configured. Run: codevf setup');
     process.exit(1);
