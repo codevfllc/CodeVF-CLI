@@ -154,9 +154,25 @@ export class WebSocketClient extends EventEmitter {
       let responseText = '';
       let creditsUsed = 0;
       const startTime = Date.now();
+      let hasReceivedMessage = false;
 
       const onEngineerMessage = (msg: EngineerMessage) => {
         responseText += msg.text + '\n';
+        hasReceivedMessage = true;
+        // Auto-resolve if we have a message and enough time has passed for a closure request
+        // This handles the case where the closure request doesn't arrive but the message did
+        setTimeout(() => {
+          if (hasReceivedMessage && !hasResolvedOrRejected) {
+            cleanup();
+            const duration = Math.ceil((Date.now() - startTime) / 60000);
+            hasResolvedOrRejected = true;
+            resolve({
+              text: responseText.trim(),
+              creditsUsed,
+              duration: `${duration} min`,
+            });
+          }
+        }, 2000);
       };
 
       const onBillingUpdate = (update: BillingUpdate) => {
@@ -164,19 +180,27 @@ export class WebSocketClient extends EventEmitter {
       };
 
       const onClosureRequest = () => {
-        cleanup();
-        const duration = Math.ceil((Date.now() - startTime) / 60000);
-        resolve({
-          text: responseText.trim(),
-          creditsUsed,
-          duration: `${duration} min`,
-        });
+        if (!hasResolvedOrRejected) {
+          cleanup();
+          const duration = Math.ceil((Date.now() - startTime) / 60000);
+          hasResolvedOrRejected = true;
+          resolve({
+            text: responseText.trim(),
+            creditsUsed,
+            duration: `${duration} min`,
+          });
+        }
       };
 
       const onError = (error: Error) => {
-        cleanup();
-        reject(new SessionError(`WebSocket error: ${error.message}`));
+        if (!hasResolvedOrRejected) {
+          cleanup();
+          hasResolvedOrRejected = true;
+          reject(new SessionError(`WebSocket error: ${error.message}`));
+        }
       };
+
+      let hasResolvedOrRejected = false;
 
       const cleanup = () => {
         this.off('engineer_message', onEngineerMessage);
@@ -192,8 +216,21 @@ export class WebSocketClient extends EventEmitter {
       this.on('error', onError);
 
       const timeoutHandle = setTimeout(() => {
-        cleanup();
-        reject(new TimeoutError('Timeout waiting for engineer response'));
+        if (!hasResolvedOrRejected) {
+          cleanup();
+          hasResolvedOrRejected = true;
+          if (hasReceivedMessage) {
+            // If we got a message but timed out waiting for closure, return what we have
+            const duration = Math.ceil((Date.now() - startTime) / 60000);
+            resolve({
+              text: responseText.trim(),
+              creditsUsed,
+              duration: `${duration} min`,
+            });
+          } else {
+            reject(new TimeoutError('Timeout waiting for engineer response'));
+          }
+        }
       }, timeoutMs);
     });
   }

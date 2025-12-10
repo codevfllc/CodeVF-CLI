@@ -119,6 +119,9 @@ export async function handleCvfInstant(message?: string): Promise<void> {
     // Wait for response (5 min timeout)
     const response = await ws.waitForResponse(300000);
 
+    // Give the server a moment to send any final messages
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
     // Disconnect
     ws.disconnect();
 
