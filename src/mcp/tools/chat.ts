@@ -51,6 +51,7 @@ export class ChatTool {
       const task = await this.tasksApi.create({
         message: args.message,
         taskMode: 'realtime_chat',
+        status: 'requested',
         maxCredits,
       });
 
