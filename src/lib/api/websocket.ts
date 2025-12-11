@@ -159,20 +159,8 @@ export class WebSocketClient extends EventEmitter {
       const onEngineerMessage = (msg: EngineerMessage) => {
         responseText += msg.text + '\n';
         hasReceivedMessage = true;
-        // Auto-resolve if we have a message and enough time has passed for a closure request
-        // This handles the case where the closure request doesn't arrive but the message did
-        setTimeout(() => {
-          if (hasReceivedMessage && !hasResolvedOrRejected) {
-            cleanup();
-            const duration = Math.ceil((Date.now() - startTime) / 60000);
-            hasResolvedOrRejected = true;
-            resolve({
-              text: responseText.trim(),
-              creditsUsed,
-              duration: `${duration} min`,
-            });
-          }
-        }, 2000);
+        // Wait for closure request instead of auto-resolving after 2 seconds
+        console.log('[WebSocket] Received engineer message, waiting for task completion...');
       };
 
       const onBillingUpdate = (update: BillingUpdate) => {
@@ -184,6 +172,11 @@ export class WebSocketClient extends EventEmitter {
           cleanup();
           const duration = Math.ceil((Date.now() - startTime) / 60000);
           hasResolvedOrRejected = true;
+          logger.info('[WebSocket] Received closure request, resolving response', {
+            duration,
+            creditsUsed,
+            textLength: responseText.length,
+          });
           resolve({
             text: responseText.trim(),
             creditsUsed,
@@ -196,6 +189,7 @@ export class WebSocketClient extends EventEmitter {
         if (!hasResolvedOrRejected) {
           cleanup();
           hasResolvedOrRejected = true;
+          logger.error('[WebSocket] Connection error while waiting for response', error);
           reject(new SessionError(`WebSocket error: ${error.message}`));
         }
       };
@@ -219,6 +213,11 @@ export class WebSocketClient extends EventEmitter {
         if (!hasResolvedOrRejected) {
           cleanup();
           hasResolvedOrRejected = true;
+          logger.warn('[WebSocket] Timeout waiting for closure request', { 
+            hasReceivedMessage, 
+            timeoutMs,
+            receivedText: responseText.substring(0, 100) 
+          });
           if (hasReceivedMessage) {
             // If we got a message but timed out waiting for closure, return what we have
             const duration = Math.ceil((Date.now() - startTime) / 60000);
