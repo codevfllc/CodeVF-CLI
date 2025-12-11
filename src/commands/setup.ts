@@ -237,13 +237,63 @@ export async function setupCommand(): Promise<void> {
 
     spinner.succeed('Authentication successful!');
 
-    // Prompt for default project ID
-    const { projectId } = await prompts({
-      type: 'text',
-      name: 'projectId',
-      message: 'Default project ID (optional):',
-      initial: '1',
-    });
+    // Fetch existing projects for selection
+    let projectId;
+    try {
+      spinner.start('Fetching your projects...');
+      
+      const response = await fetch(`${baseUrl}/api/cli/projects`, {
+        headers: {
+          'Authorization': `Bearer ${authResult.accessToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json() as {
+          success: boolean;
+          selectionOptions?: Array<{
+            value: string;
+            label: string;
+            description: string;
+          }>;
+          message?: string;
+        };
+        spinner.succeed('Projects loaded');
+
+        if (data.success && data.selectionOptions) {
+          console.log(chalk.dim('\n' + (data.message || '')));
+          
+          const { selectedProject } = await prompts({
+            type: 'select',
+            name: 'selectedProject',
+            message: 'Choose a default project:',
+            choices: data.selectionOptions.map((option) => ({
+              title: option.label,
+              description: option.description,
+              value: option.value
+            })),
+            initial: 0,
+          });
+
+          projectId = selectedProject === 'new' ? undefined : selectedProject;
+        } else {
+          // Fallback if API fails
+          const { manualProjectId } = await prompts({
+            type: 'text',
+            name: 'manualProjectId',
+            message: 'Default project ID (optional):',
+            initial: '',
+          });
+          projectId = manualProjectId;
+        }
+      } else {
+        spinner.warn('Could not load projects, skipping selection');
+        projectId = undefined;
+      }
+    } catch (error) {
+      spinner.warn('Could not load projects, skipping selection');
+      projectId = undefined;
+    }
 
     // Save MCP configuration
     mcpConfigManager.save({
