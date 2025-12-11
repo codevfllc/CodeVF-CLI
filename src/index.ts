@@ -14,6 +14,8 @@ import { initCommand } from './commands/init.js';
 import { syncCommand } from './commands/sync.js';
 import { fixCommand } from './commands/fix.js';
 import { tasksCommand } from './commands/tasks.js';
+import { chatCommand } from './commands/chat.js';
+import { listenCommand } from './commands/listen.js';
 import { handleError } from './utils/errors.js';
 import { ConfigManager } from './modules/config.js';
 import { AiAgent } from './modules/aiAgent.js';
@@ -300,6 +302,35 @@ if (args.length === 0) {
         async () => {
           try {
             await tasksCommand(undefined);
+          } catch (error) {
+            handleError(error);
+          }
+        }
+      )
+      .command(
+        'cvf-chat [project-id]',
+        'Start or join a live chat session with an engineer',
+        (yargs) => {
+          return yargs.positional('project-id', {
+            type: 'string',
+            describe: 'Optional project ID to connect to',
+          });
+        },
+        async (argv) => {
+          try {
+            await chatCommand(argv['project-id'] as string | undefined);
+          } catch (error) {
+            handleError(error);
+          }
+        }
+      )
+      .command(
+        'cvf-listen',
+        'Monitor all active chat sessions in real-time',
+        () => {},
+        async () => {
+          try {
+            await listenCommand();
           } catch (error) {
             handleError(error);
           }

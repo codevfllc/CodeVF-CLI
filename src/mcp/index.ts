@@ -16,6 +16,7 @@ import { TasksApi } from '../lib/api/tasks.js';
 import { ProjectsApi } from '../lib/api/projects.js';
 import { InstantTool } from './tools/instant.js';
 import { ChatTool } from './tools/chat.js';
+import { ListenTool } from './tools/listen.js';
 import { logger, LogLevel } from '../lib/utils/logger.js';
 
 /**
@@ -51,6 +52,7 @@ async function main() {
   const projectsApi = new ProjectsApi(apiClient);
   const instantTool = new InstantTool(tasksApi, projectsApi, tokenManager, config.baseUrl);
   const chatTool = new ChatTool(tasksApi, config.baseUrl);
+  const listenTool = new ListenTool(tasksApi, config.baseUrl);
 
   // Create MCP server
   const server = new Server(
@@ -114,6 +116,25 @@ async function main() {
             required: ['message'],
           },
         },
+        {
+          name: 'codevf-listen',
+          description:
+            'Monitor active chat sessions in real-time. View status, messages, and engineer updates. Use for: tracking session progress, monitoring credits, verifying engineer responses.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: {
+                type: 'string',
+                description: 'Optional specific session ID to monitor. If omitted, lists all active sessions.',
+              },
+              verbose: {
+                type: 'boolean',
+                description: 'Include detailed information like credits used and engineer details (default: false)',
+                default: false,
+              },
+            },
+          },
+        },
       ],
     };
   });
@@ -131,6 +152,10 @@ async function main() {
 
         case 'codevf-chat':
           result = await chatTool.execute(args as any);
+          break;
+
+        case 'codevf-listen':
+          result = await listenTool.execute(args as any);
           break;
 
         default:
