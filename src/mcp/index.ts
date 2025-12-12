@@ -62,7 +62,9 @@ async function main() {
     },
     {
       capabilities: {
-        tools: {},
+        tools: {
+          
+        },
       },
     }
   );
@@ -74,7 +76,7 @@ async function main() {
         {
           name: 'codevf-instant',
           description:
-            'Get quick validation from human engineer (1-10 credits). Use for: testing if fix works, identifying errors, quick questions. Returns single response from engineer.',
+            'Get quick validation from human engineer. Use for: testing if fix works, identifying errors, quick questions. Returns single response from engineer.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -84,13 +86,12 @@ async function main() {
               },
               maxCredits: {
                 type: 'number',
-                description: 'Maximum credits to spend (1-10, default: 10)',
+                description: 'Maximum credits to spend (1-10, default: 10). Rate: 1 credit/minute. You will how much credits an engineer has to take, and let the user edit this.',
                 default: 10,
                 minimum: 1,
-                maximum: 10,
               },
             },
-            required: ['message'],
+            required: ['message', 'maxCredits'],
           },
         },
         {
@@ -125,11 +126,13 @@ async function main() {
             properties: {
               sessionId: {
                 type: 'string',
-                description: 'Optional specific session ID to monitor. If omitted, lists all active sessions.',
+                description:
+                  'Optional specific session ID to monitor. If omitted, lists all active sessions.',
               },
               verbose: {
                 type: 'boolean',
-                description: 'Include detailed information like credits used and engineer details (default: false)',
+                description:
+                  'Include detailed information like credits used and engineer details (default: false)',
                 default: false,
               },
             },
