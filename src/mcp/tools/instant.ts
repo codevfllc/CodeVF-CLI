@@ -62,6 +62,7 @@ export class InstantTool {
       const task = await this.tasksApi.create({
         message: args.message,
         taskMode: 'realtime_answer',
+        status: "requested",
         maxCredits,
         projectId: project.id.toString(),
       });
@@ -81,6 +82,8 @@ export class InstantTool {
       await ws.connect();
 
       logger.info('Waiting for engineer response...');
+
+      console.log(`[Debug] Running on ${wsUrl}`)
 
       // Wait for response (5 min timeout)
       const response = await ws.waitForResponse(300000);

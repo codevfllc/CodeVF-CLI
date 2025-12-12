@@ -7,10 +7,7 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 import { ConfigManager } from '../lib/config/manager.js';
 import { TokenManager } from '../lib/auth/token-manager.js';
@@ -19,6 +16,7 @@ import { TasksApi } from '../lib/api/tasks.js';
 import { ProjectsApi } from '../lib/api/projects.js';
 import { InstantTool } from './tools/instant.js';
 import { ChatTool } from './tools/chat.js';
+import { ListenTool } from './tools/listen.js';
 import { logger, LogLevel } from '../lib/utils/logger.js';
 
 /**
@@ -31,7 +29,7 @@ async function main() {
   }
 
   // Check if configured
-  const configManager = new ConfigManager('mcp-config.json');
+  const configManager = new ConfigManager('config.json');
   if (!configManager.exists()) {
     console.error('Error: Not configured. Run: codevf setup');
     process.exit(1);
@@ -54,6 +52,7 @@ async function main() {
   const projectsApi = new ProjectsApi(apiClient);
   const instantTool = new InstantTool(tasksApi, projectsApi, tokenManager, config.baseUrl);
   const chatTool = new ChatTool(tasksApi, config.baseUrl);
+  const listenTool = new ListenTool(tasksApi, config.baseUrl);
 
   // Create MCP server
   const server = new Server(
@@ -63,7 +62,9 @@ async function main() {
     },
     {
       capabilities: {
-        tools: {},
+        tools: {
+          
+        },
       },
     }
   );
@@ -75,7 +76,7 @@ async function main() {
         {
           name: 'codevf-instant',
           description:
-            'Get quick validation from human engineer (1-10 credits). Use for: testing if fix works, identifying errors, quick questions. Returns single response from engineer.',
+            'Get quick validation from human engineer. Use for: testing if fix works, identifying errors, quick questions. Returns single response from engineer.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -85,13 +86,12 @@ async function main() {
               },
               maxCredits: {
                 type: 'number',
-                description: 'Maximum credits to spend (1-10, default: 10)',
+                description: 'Maximum credits to spend (1-10, default: 10). Rate: 1 credit/minute. You will how much credits an engineer has to take, and let the user edit this.',
                 default: 10,
                 minimum: 1,
-                maximum: 10,
               },
             },
-            required: ['message'],
+            required: ['message', 'maxCredits'],
           },
         },
         {
@@ -117,6 +117,27 @@ async function main() {
             required: ['message'],
           },
         },
+        {
+          name: 'codevf-listen',
+          description:
+            'Monitor active chat sessions in real-time. View status, messages, and engineer updates. Use for: tracking session progress, monitoring credits, verifying engineer responses.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: {
+                type: 'string',
+                description:
+                  'Optional specific session ID to monitor. If omitted, lists all active sessions.',
+              },
+              verbose: {
+                type: 'boolean',
+                description:
+                  'Include detailed information like credits used and engineer details (default: false)',
+                default: false,
+              },
+            },
+          },
+        },
       ],
     };
   });
@@ -134,6 +155,10 @@ async function main() {
 
         case 'codevf-chat':
           result = await chatTool.execute(args as any);
+          break;
+
+        case 'codevf-listen':
+          result = await listenTool.execute(args as any);
           break;
 
         default:

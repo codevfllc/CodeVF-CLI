@@ -194,7 +194,7 @@ export async function setupCommand(): Promise<void> {
   console.log(chalk.bold.blue('║   CodeVF MCP Server Setup             ║'));
   console.log(chalk.bold.blue('╚═══════════════════════════════════════╝\n'));
 
-  const mcpConfigManager = new ConfigManager('mcp-config.json');
+  const mcpConfigManager = new ConfigManager('config.json');
 
   // Check if already configured and reuse base URL if present
   let baseUrl = process.env.CODEVF_API_URL || 'https://app.codevf.com';
