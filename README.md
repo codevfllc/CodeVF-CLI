@@ -1,6 +1,6 @@
 # CodeVF CLI
 
-Live debugging with vetted engineers, right from your terminal.
+**⚠️ BETA:** Live debugging with vetted engineers, right from your terminal.
 
 ## Installation
 
