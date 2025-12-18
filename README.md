@@ -23,6 +23,9 @@ codevf
 # Or provide issue directly
 codevf fix "Users can't login after OAuth update"
 
+# Auto-create a tunnel when starting a session
+codevf fix "Debug OAuth callback" --tunnel 3000
+
 # Sync your code changes
 codevf sync
 

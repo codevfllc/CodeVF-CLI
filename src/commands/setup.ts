@@ -77,21 +77,31 @@ Please help me with the following question or task by consulting a CodeVF engine
      - Architecture discussions
      - Extended collaboration
 
+   - Use \`codevf-tunnel\` for:
+     - Creating secure tunnels to expose local dev servers
+     - Testing webhooks, OAuth callbacks, or external integrations
+     - Sharing local development environment with engineers
+     - No credits required - tunnel remains active for session
+
 2. **Use the appropriate tool:**
    - For instant queries: Call \`codevf-instant\` with the message and appropriate maxCredits (1-10)
    - For extended sessions: Call \`codevf-chat\` with the message and appropriate maxCredits (suggest 240 for ~2 hours)
+   - For tunnel access: Call \`codevf-tunnel\` with the port number (e.g., { "port": 3000 })
 
 3. **Present the response:**
    - For instant queries: Share the engineer's response directly
    - For chat sessions: Provide the session URL so the user can monitor the conversation
+   - For tunnels: Share the public URL that was created
 
 **Credit Guidelines:**
 - Instant validation: 1-10 credits (typically 3-5 credits per question)
 - Extended chat: 2 credits per minute (240 credits = 2 hours)
+- Tunnel creation: Free (no credits required)
 
 **Example Usage:**
 - \`/cvf Does this authentication fix prevent the timing attack?\` → Use codevf-instant
 - \`/cvf Complex race condition in WebSocket reconnection needs debugging\` → Use codevf-chat
+- \`/cvf Create tunnel to my dev server on port 3000\` → Use codevf-tunnel
 `;
 
     fs.writeFileSync(cvfCommandPath, commandContent, { mode: 0o644 });
@@ -323,7 +333,11 @@ export async function setupCommand(): Promise<void> {
       console.log(chalk.dim('1. Restart Claude Code to load the MCP server'));
       console.log(chalk.dim('2. Use the /cvf slash command in Claude Code:'));
       console.log(chalk.dim('   Example: ') + chalk.white('/cvf Does this fix work?'));
-      console.log(chalk.dim('3. Or ask Claude to use codevf-instant or codevf-chat tools\n'));
+      console.log(chalk.dim('   Example: ') + chalk.white('/cvf Create tunnel to port 3000'));
+      console.log(chalk.dim('3. Or ask Claude to use MCP tools directly:'));
+      console.log(chalk.dim('   - codevf-instant: Quick validation (1-10 credits)'));
+      console.log(chalk.dim('   - codevf-chat: Extended debugging (2 credits/min)'));
+      console.log(chalk.dim('   - codevf-tunnel: Expose local dev server (free)\n'));
     }
   } catch (error) {
     spinner.fail('Setup failed');

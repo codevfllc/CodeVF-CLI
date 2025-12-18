@@ -19,6 +19,7 @@ import { TasksApi } from '../lib/api/tasks.js';
 import { ProjectsApi } from '../lib/api/projects.js';
 import { InstantTool } from './tools/instant.js';
 import { ChatTool } from './tools/chat.js';
+import { TunnelTool } from './tools/tunnel.js';
 import { logger, LogLevel } from '../lib/utils/logger.js';
 
 /**
@@ -54,6 +55,7 @@ async function main() {
   const projectsApi = new ProjectsApi(apiClient);
   const instantTool = new InstantTool(tasksApi, projectsApi, tokenManager, config.baseUrl);
   const chatTool = new ChatTool(tasksApi, config.baseUrl);
+  const tunnelTool = new TunnelTool();
 
   // Create MCP server
   const server = new Server(
@@ -117,6 +119,31 @@ async function main() {
             required: ['message'],
           },
         },
+        {
+          name: 'codevf-tunnel',
+          description:
+            'Create a secure tunnel to expose a local port over the internet using localtunnel. Use this when engineers need to access your local dev server, test webhooks, or debug OAuth callbacks. The tunnel remains active for the session.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              port: {
+                type: 'number',
+                description: 'Local port number to expose (e.g., 3000 for dev server)',
+                minimum: 1,
+                maximum: 65535,
+              },
+              subdomain: {
+                type: 'string',
+                description: 'Optional subdomain for the tunnel URL (e.g., "myapp" -> https://myapp.loca.lt)',
+              },
+              reason: {
+                type: 'string',
+                description: 'Optional description of why tunnel is needed (e.g., "Testing OAuth callback")',
+              },
+            },
+            required: ['port'],
+          },
+        },
       ],
     };
   });
@@ -134,6 +161,10 @@ async function main() {
 
         case 'codevf-chat':
           result = await chatTool.execute(args as any);
+          break;
+
+        case 'codevf-tunnel':
+          result = await tunnelTool.execute(args as any);
           break;
 
         default:
@@ -173,6 +204,7 @@ async function main() {
   // Handle shutdown
   process.on('SIGINT', async () => {
     logger.info('Shutting down...');
+    await tunnelTool.closeAll();
     await server.close();
     process.exit(0);
   });

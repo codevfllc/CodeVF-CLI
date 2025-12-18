@@ -26,6 +26,7 @@ export interface ActiveTunnel {
   subdomain?: string;
   createdAt: Date;
   taskId: string;
+  password: string; // Required - always fetched with retry logic
 }
 
 export interface AiConfig {

@@ -150,7 +150,7 @@ async function gatherProjectContext(configManager: ConfigManager): Promise<Actio
 
 export async function fixCommand(
   issueDescription: string,
-  options?: { maxCredits?: number; taskMode?: TaskMode }
+  options?: { maxCredits?: number; taskMode?: TaskMode; tunnel?: number }
 ): Promise<void> {
   const authManager = new AuthManager();
   const configManager = new ConfigManager();
@@ -244,6 +244,48 @@ export async function fixCommand(
 
     const permissionManager = new PermissionManager();
     const tunnelManager = new TunnelManager();
+
+    // Auto-create tunnel if specified
+    if (options?.tunnel) {
+      const tunnelPort = options.tunnel;
+      console.log(chalk.dim(`\n🔗 Creating tunnel for port ${tunnelPort}...`));
+
+      try {
+        const tunnel = await tunnelManager.createTunnel({
+          port: tunnelPort,
+          taskId,
+          onError: (err) => console.error(chalk.red('Tunnel error:'), err),
+          onClose: () => console.log(chalk.dim('Tunnel closed')),
+        });
+
+        console.log(chalk.green(`✓ Tunnel created: ${chalk.cyan(tunnel.url)}`));
+        if (tunnel.password) {
+          console.log(chalk.yellow(`  🔑 Password: ${tunnel.password}`));
+        }
+        console.log(chalk.dim(`  Engineer will have access to localhost:${tunnelPort}\n`));
+
+        // Notify engineer via WebSocket
+        wsClient.send({
+          type: 'tunnel_shared',
+          timestamp: new Date().toISOString(),
+          payload: { port: tunnel.port, url: tunnel.url, password: tunnel.password },
+        });
+
+        // Send message to chat
+        try {
+          const passwordInfo = tunnel.password ? ` (password: ${tunnel.password})` : '';
+          await apiClient.sendMessage(
+            taskId,
+            `🔗 Tunnel created: ${tunnel.url} (port ${tunnel.port})${passwordInfo}`
+          );
+        } catch (error) {
+          // Best effort - continue even if message fails
+        }
+      } catch (error: any) {
+        console.log(chalk.yellow(`⚠ Failed to create tunnel: ${error.message}`));
+        console.log(chalk.dim('Continuing without tunnel...\n'));
+      }
+    }
 
     const { unmount, waitUntilExit } = render(
       <LiveSession
