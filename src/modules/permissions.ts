@@ -79,7 +79,7 @@ export class PermissionManager {
     reason: string,
     taskId: string,
     tunnelManager: TunnelManager
-  ): Promise<{ approved: boolean; tunnelUrl?: string; error?: string }> {
+  ): Promise<{ approved: boolean; tunnelUrl?: string; password?: string; error?: string }> {
     // Display permission prompt
     console.log('\n' + chalk.yellow('┌─────────────────────────────────────────┐'));
     console.log(chalk.yellow('│ Engineer requests tunnel access:        │'));
@@ -123,10 +123,12 @@ export class PermissionManager {
       });
 
       console.log(chalk.green(`✓ Tunnel created: ${chalk.cyan(tunnel.url)}\n`));
+      console.log(chalk.dim(`   Password: ${tunnel.password}\n`));
 
       return {
         approved: true,
         tunnelUrl: tunnel.url,
+        password: tunnel.password, // Always included - required for loca.lt access
       };
     } catch (error: any) {
       const errorMsg = error.message || 'Failed to create tunnel';

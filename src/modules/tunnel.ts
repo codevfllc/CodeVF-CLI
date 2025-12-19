@@ -6,6 +6,7 @@ import localtunnel from 'localtunnel';
 import type { Tunnel } from 'localtunnel';
 import { EventEmitter } from 'events';
 import { ActiveTunnel } from '../types/index.js';
+import https from 'https';
 
 export interface TunnelOptions {
   port: number;
@@ -18,6 +19,61 @@ export interface TunnelOptions {
 export class TunnelManager extends EventEmitter {
   private tunnel: Tunnel | null = null;
   private activeTunnel: ActiveTunnel | null = null;
+
+  /**
+   * Fetch the localtunnel password for bypassing the landing page
+   * Retries up to 3 times to ensure we always get a password
+   */
+  private async fetchTunnelPassword(): Promise<string> {
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const password = await new Promise<string>((resolve, reject) => {
+          https
+            .get('https://loca.lt/mytunnelpassword', (res) => {
+              // Check HTTP status code before reading response
+              if (res.statusCode !== 200) {
+                reject(new Error(`HTTP ${res.statusCode}: ${res.statusMessage || 'Request failed'}`));
+                // Consume response data to free up memory
+                res.resume();
+                return;
+              }
+
+              let data = '';
+              res.on('data', (chunk) => {
+                data += chunk;
+              });
+              res.on('end', () => {
+                const trimmed = data.trim();
+                if (trimmed) {
+                  resolve(trimmed);
+                } else {
+                  reject(new Error('Empty password received'));
+                }
+              });
+            })
+            .on('error', (err) => {
+              reject(err);
+            });
+        });
+
+        return password;
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        console.error(`Failed to fetch tunnel password (attempt ${attempt}/${maxRetries}):`, err);
+        
+        // Wait before retry if not the last attempt (exponential backoff: 500ms, 1s, 2s)
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt - 1)));
+        }
+      }
+    }
+
+    // If we exit the loop, all retries failed
+    throw new Error(`Could not fetch tunnel password after multiple attempts: ${lastError?.message || 'Unknown error'}`);
+  }
 
   /**
    * Create a new localtunnel for a task session
@@ -36,12 +92,16 @@ export class TunnelManager extends EventEmitter {
     try {
       this.tunnel = await localtunnel(tunnelOptions);
 
+      // Fetch the tunnel password (with retries to ensure we always get one)
+      const password = await this.fetchTunnelPassword();
+
       this.activeTunnel = {
         url: this.tunnel.url,
         port: options.port,
         subdomain: options.subdomain,
         createdAt: new Date(),
         taskId: options.taskId,
+        password, // Password is always present (method throws if unavailable)
       };
 
       // Handle tunnel errors

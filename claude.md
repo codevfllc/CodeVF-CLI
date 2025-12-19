@@ -21,7 +21,55 @@ The CodeVF CLI is a customer-facing tool that enables:
 - **Security**: Local secure token storage
 - **Git Integration**: Backend handles PRs (no direct GitHub manipulation)
 
-## 3. Project Structure
+## 3. Current Development Scope (IMPORTANT)
+
+**⚠️ SETUP-ONLY MODE ACTIVE**
+
+The CLI is currently in **beta** with `SETUP_ONLY_MODE=true` (see `src/index.ts`). This means:
+
+### ACTIVE SCOPE: `codevf setup` Command Only
+- **Primary Command**: Only `codevf setup` is enabled for end users
+- **Purpose**: Configure MCP server integration with Claude Code
+- **Status**: Active development and user-facing
+
+### RESTRICTED: Other Commands (Disabled in Beta)
+The following commands are **disabled** for end users and should **NOT** be modified unless explicitly requested:
+- `codevf login` - Authentication (disabled)
+- `codevf logout` - Logout (disabled)
+- `codevf init` - Project initialization (disabled)
+- `codevf sync` - Repository sync (disabled)
+- `codevf tasks` - Task listing (disabled)
+- `codevf fix` - Live debug sessions (disabled)
+
+### Files In Active Scope:
+- ✅ `src/commands/setup.ts` - Setup command implementation
+- ✅ `src/mcp/index.ts` - MCP server configuration
+- ✅ `src/mcp/tools/*` - MCP tools (accessible through Claude Code)
+- ✅ `src/modules/tunnel.ts` - Tunnel management (used by MCP tools)
+
+### Files Out of Scope (Do Not Modify):
+- ❌ `src/commands/fix.tsx` - Disabled in beta
+- ❌ `src/commands/login.ts` - Disabled in beta
+- ❌ `src/commands/init.ts` - Disabled in beta
+- ❌ `src/commands/sync.ts` - Disabled in beta
+- ❌ `src/commands/tasks.ts` - Disabled in beta
+- ❌ `src/commands/logout.ts` - Disabled in beta
+
+### Development Guidelines:
+1. **Always verify scope** before making changes
+2. **Setup-related features** should be in `setup.ts` or MCP tools
+3. **MCP tools** are the primary user-facing functionality
+4. **Ask for confirmation** if a request seems to affect disabled commands
+
+### When to Work on Other Commands:
+Only modify disabled commands if:
+- User explicitly requests changes to disabled features
+- User confirms they understand the feature is not currently available
+- Changes are for future preparation with clear documentation
+
+**Remember**: The MCP tools (`codevf-tunnel`, `codevf-instant`, `codevf-chat`) are accessible through Claude Code and are in active scope.
+
+## 4. Project Structure
 
 ### Local Files Created by `codevf init`
 
@@ -60,9 +108,9 @@ The CodeVF CLI is a customer-facing tool that enables:
 }
 ```
 
-## 4. CLI Commands (MVP)
+## 5. CLI Commands (MVP)
 
-### 4.1 Authentication
+### 5.1 Authentication
 
 #### `codevf login`
 - Opens browser OAuth URL
@@ -73,7 +121,7 @@ The CodeVF CLI is a customer-facing tool that enables:
 - Deletes `auth.json`
 - Clears local session
 
-### 4.2 Project Initialization
+### 5.2 Project Initialization
 
 #### `codevf init`
 
@@ -90,7 +138,7 @@ The CodeVF CLI is a customer-facing tool that enables:
 9. Register project: `POST /project/init`
 10. Print summary
 
-### 4.3 Live Debug Session
+### 5.3 Live Debug Session
 
 #### `codevf fix "<issue description>"`
 
@@ -167,7 +215,7 @@ The CodeVF CLI is a customer-facing tool that enables:
    ```
 4. Send rating: `POST /tasks/<id>/rate`
 
-### 4.4 Sync Repository
+### 5.4 Sync Repository
 
 #### `codevf sync`
 
@@ -190,9 +238,9 @@ The CodeVF CLI is a customer-facing tool that enables:
 
 **Note**: Code is only uploaded if customer opted in during `init` or engineer explicitly requests.
 
-## 5. CLI Internal Architecture
+## 6. CLI Internal Architecture
 
-### 5.1 Technology Stack
+### 6.1 Technology Stack
 
 **Language**: Node.js + TypeScript
 
@@ -207,7 +255,7 @@ The CodeVF CLI is a customer-facing tool that enables:
 - `archiver` - Zip creation
 - `keytar` (optional) - Secure credential storage
 
-### 5.2 Module Structure
+### 6.2 Module Structure
 
 ```
 src/
@@ -237,7 +285,7 @@ src/
 └── index.ts              # CLI entry point
 ```
 
-## 6. API Endpoints
+## 7. API Endpoints
 
 ### Authentication
 - `POST /auth/init` - Initiate OAuth flow
@@ -257,7 +305,7 @@ src/
 - `POST /tasks/<id>/end-session` - End debug session
 - `POST /tasks/<id>/rate` - Rate engineer
 
-## 7. WebSocket Protocol
+## 8. WebSocket Protocol
 
 ### Event Types
 
@@ -288,7 +336,7 @@ interface WebSocketMessage {
 }
 ```
 
-## 8. Permission Model
+## 9. Permission Model
 
 ### Customer Approvals Required For:
 - Running any command
@@ -305,7 +353,7 @@ interface WebSocketMessage {
 - Cannot execute commands without approval
 - Cannot access files without approval
 
-## 9. Error Handling
+## 10. Error Handling
 
 ### Error Scenarios:
 1. **No Internet Connection**
@@ -371,7 +419,7 @@ class PermissionError extends CodeVFError {}
 class GitError extends CodeVFError {}
 ```
 
-## 10. Non-Goals for v1
+## 11. Non-Goals for v1
 
 The CLI will **NOT**:
 - Create PRs from CLI (backend handles this)
@@ -382,7 +430,7 @@ The CLI will **NOT**:
 - Manage GitHub/GitLab tokens directly
 - Implement business logic (backend only)
 
-## 11. Security Considerations
+## 12. Security Considerations
 
 ### Token Storage
 - Tokens stored in user config directory (`~/.config/codevf/`)
@@ -408,7 +456,7 @@ The CLI will **NOT**:
 - No proxy credential storage
 - Request signing for sensitive operations
 
-## 12. Testing Strategy
+## 13. Testing Strategy
 
 ### Unit Tests
 - Each module independently tested
@@ -433,7 +481,7 @@ The CLI will **NOT**:
 - [ ] Git branch detection
 - [ ] Sync with dirty working directory
 
-## 13. Development Phases
+## 14. Development Phases
 
 ### Phase 1: Core Infrastructure
 - Project setup (package.json, TypeScript config)
@@ -459,7 +507,7 @@ The CLI will **NOT**:
 - Documentation
 - Example flows
 
-## 14. Success Metrics
+## 15. Success Metrics
 
 ### Technical Metrics
 - Command response time < 200ms (local operations)
@@ -473,7 +521,7 @@ The CLI will **NOT**:
 - Session status always visible
 - Credit usage transparent
 
-## 15. Future Enhancements (Post-v1)
+## 16. Future Enhancements (Post-v1)
 
 - Offline mode for reading logs
 - Local caching of common responses
@@ -484,7 +532,7 @@ The CLI will **NOT**:
 - Multi-language support
 - Voice chat integration
 
-## 16. Hybrid Mode & AI Integration (In Development)
+## 17. Hybrid Mode & AI Integration (In Development)
 
 The CLI now supports optional AI integration via OpenCode SDK with intelligent hybrid mode:
 
