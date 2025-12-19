@@ -83,7 +83,7 @@ async function main() {
               },
               maxCredits: {
                 type: 'number',
-                description: 'Maximum credits to spend (1-10, default: 10). Rate: 1 credit/minute. You will how much credits an engineer has to take, and let the user edit this.',
+                description: 'Maximum credits to spend (1-10, default: 10). Rate: 1 credit/minute. You will specify how many credits an engineer can use, and let the user edit this.',
                 default: 10,
                 minimum: 1,
               },
