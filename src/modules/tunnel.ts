@@ -64,7 +64,7 @@ export class TunnelManager extends EventEmitter {
     }
 
     // If we exit the loop, all retries failed
-    throw new Error('Could not fetch tunnel password after multiple attempts');
+    throw new Error(`Could not fetch tunnel password after multiple attempts: ${lastError?.message || 'Unknown error'}`);
   }
 
   /**
