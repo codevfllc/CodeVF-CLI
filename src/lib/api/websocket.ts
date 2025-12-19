@@ -160,7 +160,7 @@ export class WebSocketClient extends EventEmitter {
         responseText += msg.text + '\n';
         hasReceivedMessage = true;
         // Wait for closure request instead of auto-resolving after 2 seconds
-        console.log('[WebSocket] Received engineer message, waiting for task completion...');
+        logger.info('[WebSocket] Received engineer message, waiting for task completion...');
       };
 
       const onBillingUpdate = (update: BillingUpdate) => {
