@@ -98,7 +98,7 @@ export const LiveSession: React.FC<LiveSessionProps> = ({
       const tunnel = await tunnelManager.createTunnel({ port, subdomain, taskId });
       setActiveTunnel(tunnel);
 
-      const tunnelMessage = `🔗 Tunnel shared: ${tunnel.url} (port ${tunnel.port})`;
+      const tunnelMessage = `🔗 Tunnel shared: ${tunnel.url} (port ${tunnel.port})\n🔑 Password: ${tunnel.password}`;
       setMessages((prev) => [
         ...prev,
         {
@@ -112,7 +112,7 @@ export const LiveSession: React.FC<LiveSessionProps> = ({
         wsClient.send({
           type: 'tunnel_shared',
           timestamp: new Date().toISOString(),
-          payload: { port: tunnel.port, url: tunnel.url },
+          payload: { port: tunnel.port, url: tunnel.url, password: tunnel.password },
         });
       } catch (error) {
         // best-effort to notify engineer

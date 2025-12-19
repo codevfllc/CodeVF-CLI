@@ -250,6 +250,7 @@ export interface TunnelShared extends WebSocketMessage {
   payload: {
     port: number;
     url: string;
+    password: string; // Always included - fetched with retry logic
   };
 }
 
@@ -275,6 +276,7 @@ export interface ApproveTunnel extends WebSocketMessage {
   payload: {
     tunnelUrl: string;
     port: number;
+    password: string; // Required for bypassing loca.lt landing page
     expiresAt: string;
   };
 }
@@ -299,6 +301,7 @@ export interface TunnelApproved extends WebSocketMessage {
   payload: {
     tunnelUrl: string;
     port: number;
+    password: string; // Required for bypassing loca.lt landing page
     expiresAt: string;
   };
 }
