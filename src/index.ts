@@ -325,6 +325,10 @@ if (args.length === 0) {
               type: 'boolean',
               default: false,
               describe: 'Do not auto-start opencode server; require existing server',
+            })
+            .option('tunnel', {
+              type: 'number',
+              describe: 'Automatically create tunnel for specified port (e.g., --tunnel 3000)',
             });
         },
         async (argv) => {
@@ -335,7 +339,7 @@ if (args.length === 0) {
               await aiAgent.run(argv.issue as string, { startServer: !argv['no-start-server'] });
               return;
             }
-            await fixCommand(argv.issue as string);
+            await fixCommand(argv.issue as string, { tunnel: argv.tunnel });
           } catch (error) {
             handleError(error);
           }

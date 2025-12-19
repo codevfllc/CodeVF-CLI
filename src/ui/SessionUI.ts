@@ -279,9 +279,12 @@ export function renderTunnelStatus(tunnel: { url: string; port: number; createdA
 /**
  * Renders tunnel notification message
  */
-export function renderTunnelNotification(type: 'created' | 'closed', url?: string): void {
+export function renderTunnelNotification(type: 'created' | 'closed', url?: string, password?: string): void {
   if (type === 'created' && url) {
     console.log(chalk.green(`\n✓ Tunnel created: ${chalk.cyan(url)}`));
+    if (password) {
+      console.log(chalk.yellow(`  🔑 Password: ${password}`));
+    }
     console.log(chalk.dim('  Engineer can now access your local server\n'));
   } else if (type === 'closed') {
     console.log(chalk.yellow('\n✓ Tunnel closed'));
