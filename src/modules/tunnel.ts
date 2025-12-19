@@ -32,6 +32,14 @@ export class TunnelManager extends EventEmitter {
         const password = await new Promise<string>((resolve, reject) => {
           https
             .get('https://loca.lt/mytunnelpassword', (res) => {
+              // Check HTTP status code before reading response
+              if (res.statusCode !== 200) {
+                reject(new Error(`HTTP ${res.statusCode}: ${res.statusMessage || 'Request failed'}`));
+                // Consume response data to free up memory
+                res.resume();
+                return;
+              }
+
               let data = '';
               res.on('data', (chunk) => {
                 data += chunk;
