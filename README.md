@@ -1,105 +1,158 @@
 # CodeVF CLI
 
-**⚠️ BETA:** Live debugging with vetted engineers, right from your terminal.
+**⚠️ BETA:** Connect Claude Code to live human engineers for complex debugging.
 
 ## Installation
 
 ```bash
-npm install -g codevf-cli
+npm install -g codevf
 ```
 
 ## Quick Start
 
+The CodeVF CLI is currently in **setup-only mode** for connecting Claude Code to CodeVF's MCP server:
+
 ```bash
-# Authenticate
-codevf login
+# Setup MCP server integration with Claude Code
+codevf setup
 
-# Initialize your project
-codevf init
-
-# Start a live debugging session (interactive)
-codevf
-
-# Or provide issue directly
-codevf fix "Users can't login after OAuth update"
-
-# Auto-create a tunnel when starting a session
-codevf fix "Debug OAuth callback" --tunnel 3000
-
-# Sync your code changes
-codevf sync
-
-# Share a local port with your engineer (during a session)
-# In the chat UI:
-# /tunnel 3000
+# After setup, use Claude Code with /cvf commands:
+# /cvf Does this authentication fix prevent timing attacks?
+# /cvf Complex race condition in WebSocket reconnection needs debugging  
+# /cvf Create tunnel to my dev server on port 3000
 ```
+
+**Three tools available in Claude Code:**
+- `codevf-instant` - Quick validation queries (4-minute max)
+- `codevf-chat` - Extended debugging sessions (up to 2 hours) 
+- `codevf-tunnel` - Share local dev servers securely
 
 ## Commands
 
-### `codevf login`
-Authenticate with CodeVF using OAuth.
+### `codevf setup` (Beta - Primary Command)
+Configure MCP server integration with Claude Code:
+- Authenticate with CodeVF using OAuth
+- Auto-configure Claude Code's `~/.claude.json` file
+- Create `/cvf` slash command for Claude Code
+- Select default project for context
 
-### `codevf logout`
-Clear local authentication.
+### Claude Code Integration (After Setup)
+Once configured, use these tools directly in Claude Code:
 
-### `codevf init`
-Initialize CodeVF in your project. Sets up:
-- Project configuration
-- Test and build commands
-- AI tool preferences
-- Optional code upload for faster debugging
+**`/cvf [message]` - Smart routing to appropriate tool**
+- Quick questions → `codevf-instant` (4min max, good for validation)
+- Complex debugging → `codevf-chat` (extended sessions up to 2 hours)
+- Local server access → `codevf-tunnel` (share dev servers securely)
 
-### `codevf` or `codevf fix "<issue description>"`
-Start a live debugging session with a vetted engineer:
-- Just type `codevf` and you'll be prompted to describe your issue
-- Or use `codevf fix "issue"` to provide it directly
-- Real-time chat in your terminal
-- Engineer can request to run commands (with your approval)
-- Engineer can request to view files (with your approval)
-- Securely share a local port over the internet with `/tunnel <port>` when asked
-- Track credit usage in real-time
-- Rate the engineer when done
+**Example usage:**
+```
+/cvf Does this authentication fix prevent timing attacks?
+/cvf Complex race condition in WebSocket reconnection needs debugging
+/cvf Create tunnel to my dev server on port 3000
+```
 
-### `codevf sync`
-Sync your local changes to the `codevf` branch for engineer access.
+### Other Commands (Disabled in Beta)
+The following commands exist but are **disabled** in beta mode:
+- `codevf login` - Direct CLI authentication (use `setup` instead)
+- `codevf init` - Project initialization (handled via MCP tools)
+- `codevf fix` - Direct CLI debugging sessions (use Claude Code instead)
+- `codevf sync` - Repository sync (handled via MCP tools)
 
 ## How It Works
 
-1. **You have a bug** - Start a session with `codevf fix "description"`
-2. **Get matched with an engineer** - Ex-FAANG engineers with expertise in your stack
-3. **Collaborate safely** - Engineer can only run commands and view files with your approval
-4. **Get it fixed** - Engineer works in real-time to solve your issue
-5. **Pay per minute** - Only pay for active debugging time
+1. **Setup once** - Run `codevf setup` to configure Claude Code integration
+2. **Work in Claude Code** - Use `/cvf` commands to access human engineers
+3. **Get matched with experts** - Ex-FAANG engineers with expertise in your stack
+4. **Context-aware handoff** - Engineers see your Claude conversation for faster resolution
+5. **Hybrid approach** - AI handles quick questions, humans tackle complex debugging
+6. **Pay per minute** - Only pay for active engineering time
 
 ## Security & Privacy
 
-- Engineers can only access your code with explicit permission
-- All commands require approval before execution
-- File access is granted on a per-file basis
-- All actions are logged and auditable
-- Engineers work in a restricted `codevf` Git branch
-- Your code is never stored without your consent
+- **MCP integration** - No direct code access, works through Claude Code's security model
+- **Context sharing** - Engineers see your Claude conversation for better assistance
+- **Explicit permission** - Engineers request specific actions with your approval
+- **Audit trail** - All engineer actions are logged and auditable
+- **Secure tunnels** - Local dev servers shared via encrypted tunnels only when requested
+- **Session-based** - No persistent code storage, only active session context
 
 ## Configuration
 
-After running `codevf init`, configuration is stored in `.codevf/config.json`:
+After running `codevf setup`, configuration is stored in:
 
+**MCP Configuration** (`~/.config/codevf/mcp-config.json`):
 ```json
 {
-  "projectId": "uuid",
-  "allowedTools": ["claude", "gemini"],
-  "testCommand": "npm test",
-  "buildCommand": "npm run build",
-  "repoUploaded": true,
-  "branchMode": "codevf"
+  "auth": {
+    "accessToken": "jwt-token",
+    "refreshToken": "jwt-token", 
+    "userId": "user-uuid"
+  },
+  "defaultProjectId": "project-uuid",
+  "baseUrl": "https://app.codevf.com"
+}
+```
+
+**Claude Code Configuration** (auto-configured in `~/.claude.json`):
+```json
+{
+  "mcpServers": {
+    "codevf": {
+      "command": "node",
+      "args": ["/path/to/codevf/dist/mcp/index.js"]
+    }
+  }
 }
 ```
 
 ## Requirements
 
 - Node.js 18 or higher
-- Git (for sync command)
+- [Claude Code (Desktop App)](https://claude.ai/download) - Required for MCP integration
 - Internet connection
+- CodeVF account (created during setup)
+
+### Installing Claude Code
+
+If you don't have Claude Code installed:
+
+**macOS:**
+```bash
+# Download from website
+open https://claude.ai/download
+
+# Or using Homebrew
+brew install --cask claude
+```
+
+**Windows:**
+```bash
+# Download installer from website
+start https://claude.ai/download
+```
+
+**Linux:**
+```bash
+# Download AppImage from website
+curl -L https://claude.ai/download -o claude.appimage
+chmod +x claude.appimage
+./claude.appimage
+```
+
+**Note:** Claude Code requires an Anthropic account. Create one at [claude.ai](https://claude.ai) if needed.
+
+## Beta Status & Roadmap
+
+**Current Beta Features:**
+- ✅ MCP server integration with Claude Code
+- ✅ Three tools: instant, chat, tunnel  
+- ✅ OAuth authentication and project selection
+
+**Coming Soon:**
+- 🔄 Direct CLI debugging sessions (`codevf fix`)
+- 🔄 Project initialization (`codevf init`) 
+- 🔄 Repository sync (`codevf sync`)
+- 🔄 Standalone terminal UI
 
 ## Support
 
