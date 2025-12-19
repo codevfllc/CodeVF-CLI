@@ -26,6 +26,7 @@ export class TunnelManager extends EventEmitter {
    */
   private async fetchTunnelPassword(): Promise<string> {
     const maxRetries = 3;
+    let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -60,18 +61,18 @@ export class TunnelManager extends EventEmitter {
 
         return password;
       } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
         console.error(`Failed to fetch tunnel password (attempt ${attempt}/${maxRetries}):`, err);
-        if (attempt === maxRetries) {
-          // If all retries fail, throw error
-          throw new Error('Could not fetch tunnel password after multiple attempts');
+        
+        // Wait before retry if not the last attempt (exponential backoff: 500ms, 1s, 2s)
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt - 1)));
         }
-        // Wait before retry (exponential backoff: 500ms, 1s, 2s)
-        await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt - 1)));
       }
     }
 
-    // This should never be reached due to the throw above, but TypeScript requires it
-    throw new Error('Could not fetch tunnel password');
+    // If we exit the loop, all retries failed
+    throw new Error(`Could not fetch tunnel password after multiple attempts: ${lastError?.message || 'Unknown error'}`);
   }
 
   /**
