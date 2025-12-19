@@ -16,7 +16,7 @@ import { logger } from '../lib/utils/logger.js';
  * Check if MCP is configured
  */
 function checkMcpConfig(): { configured: boolean; config?: any; configManager?: ConfigManager } {
-  const configManager = new ConfigManager('mcp-config.json');
+  const configManager = new ConfigManager('config.json');
 
   if (!configManager.exists()) {
     console.log(chalk.yellow('  [!] MCP not configured'));
@@ -80,6 +80,13 @@ export async function handleCvfInstant(message?: string): Promise<void> {
     const tokenManager = new TokenManager(configManager);
     const apiClient = new ApiClient(config.baseUrl, tokenManager);
     const defaultProjectId = config.defaults?.projectId || '1';
+    
+    logger.info('handleCvfInstant config:', {
+      baseUrl: config.baseUrl,
+      defaults: config.defaults,
+      defaultProjectId,
+    });
+    
     const tasksApi = new TasksApi(apiClient, config.baseUrl, defaultProjectId);
 
     console.log(chalk.cyan('  [→] Creating instant query...'));
@@ -89,6 +96,7 @@ export async function handleCvfInstant(message?: string): Promise<void> {
       message: finalMessage!,
       taskMode: 'realtime_answer',
       maxCredits,
+      projectId: defaultProjectId,
     });
 
     if (task.warning) {
@@ -110,6 +118,9 @@ export async function handleCvfInstant(message?: string): Promise<void> {
 
     // Wait for response (5 min timeout)
     const response = await ws.waitForResponse(300000);
+
+    // Give the server a moment to send any final messages
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     // Disconnect
     ws.disconnect();
@@ -187,6 +198,7 @@ export async function handleCvfChat(message?: string): Promise<void> {
       message: finalMessage!,
       taskMode: 'realtime_chat',
       maxCredits,
+      projectId: defaultProjectId,
     });
 
     if (task.warning) {

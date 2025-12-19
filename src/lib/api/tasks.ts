@@ -13,6 +13,7 @@ export interface CreateTaskOptions {
   taskMode: TaskMode;
   maxCredits: number;
   projectId?: string;
+  status: string;
   contextData?: any;
   initiatedBy?: string;
 }
@@ -44,12 +45,15 @@ export class TasksApi {
     logger.info('Creating task', {
       mode: options.taskMode,
       maxCredits: options.maxCredits,
+      requestedProjectId: options.projectId,
+      defaultProjectId: this.defaultProjectId,
     });
 
     const response = await this.client.post('/api/cli/tasks/create', {
       issueDescription: options.message,
       taskMode: options.taskMode,
       maxCredits: options.maxCredits,
+      status: options.status ?? 'requested',
       projectId: options.projectId || this.defaultProjectId,
       contextData: options.contextData ? JSON.stringify(options.contextData) : null,
       initiatedBy: options.initiatedBy || 'ai_tool',

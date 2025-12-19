@@ -154,9 +154,13 @@ export class WebSocketClient extends EventEmitter {
       let responseText = '';
       let creditsUsed = 0;
       const startTime = Date.now();
+      let hasReceivedMessage = false;
 
       const onEngineerMessage = (msg: EngineerMessage) => {
         responseText += msg.text + '\n';
+        hasReceivedMessage = true;
+        // Wait for closure request instead of auto-resolving after 2 seconds
+        logger.info('[WebSocket] Received engineer message, waiting for task completion...');
       };
 
       const onBillingUpdate = (update: BillingUpdate) => {
@@ -164,19 +168,33 @@ export class WebSocketClient extends EventEmitter {
       };
 
       const onClosureRequest = () => {
-        cleanup();
-        const duration = Math.ceil((Date.now() - startTime) / 60000);
-        resolve({
-          text: responseText.trim(),
-          creditsUsed,
-          duration: `${duration} min`,
-        });
+        if (!hasResolvedOrRejected) {
+          cleanup();
+          const duration = Math.ceil((Date.now() - startTime) / 60000);
+          hasResolvedOrRejected = true;
+          logger.info('[WebSocket] Received closure request, resolving response', {
+            duration,
+            creditsUsed,
+            textLength: responseText.length,
+          });
+          resolve({
+            text: responseText.trim(),
+            creditsUsed,
+            duration: `${duration} min`,
+          });
+        }
       };
 
       const onError = (error: Error) => {
-        cleanup();
-        reject(new SessionError(`WebSocket error: ${error.message}`));
+        if (!hasResolvedOrRejected) {
+          cleanup();
+          hasResolvedOrRejected = true;
+          logger.error('[WebSocket] Connection error while waiting for response', error);
+          reject(new SessionError(`WebSocket error: ${error.message}`));
+        }
       };
+
+      let hasResolvedOrRejected = false;
 
       const cleanup = () => {
         this.off('engineer_message', onEngineerMessage);
@@ -192,8 +210,26 @@ export class WebSocketClient extends EventEmitter {
       this.on('error', onError);
 
       const timeoutHandle = setTimeout(() => {
-        cleanup();
-        reject(new TimeoutError('Timeout waiting for engineer response'));
+        if (!hasResolvedOrRejected) {
+          cleanup();
+          hasResolvedOrRejected = true;
+          logger.warn('[WebSocket] Timeout waiting for closure request', { 
+            hasReceivedMessage, 
+            timeoutMs,
+            receivedText: responseText.substring(0, 100) 
+          });
+          if (hasReceivedMessage) {
+            // If we got a message but timed out waiting for closure, return what we have
+            const duration = Math.ceil((Date.now() - startTime) / 60000);
+            resolve({
+              text: responseText.trim(),
+              creditsUsed,
+              duration: `${duration} min`,
+            });
+          } else {
+            reject(new TimeoutError('Timeout waiting for engineer response'));
+          }
+        }
       }, timeoutMs);
     });
   }
