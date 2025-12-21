@@ -14,8 +14,10 @@ export interface WebSocketMessage {
 }
 
 export interface EngineerMessage {
-  text: string;
-  userId: string;
+  content: string;  // Changed from 'text' to match server format
+  text?: string;
+  id?: string;
+  sender?: string;
 }
 
 export interface BillingUpdate {
@@ -60,6 +62,9 @@ export class WebSocketClient extends EventEmitter {
           switch (message.type) {
             case 'engineer_message':
               this.emit('engineer_message', message.payload as EngineerMessage);
+              break;
+            case 'session_end':
+              this.emit('session_end', message.payload);
               break;
             case 'billing_update':
               this.emit('billing_update', message.payload as BillingUpdate);
@@ -156,7 +161,8 @@ export class WebSocketClient extends EventEmitter {
       const startTime = Date.now();
 
       const onEngineerMessage = (msg: EngineerMessage) => {
-        responseText += msg.text + '\n';
+        const content = msg.content ?? msg.text ?? '';
+        responseText += content + '\n';
       };
 
       const onBillingUpdate = (update: BillingUpdate) => {
@@ -164,6 +170,16 @@ export class WebSocketClient extends EventEmitter {
       };
 
       const onClosureRequest = () => {
+        cleanup();
+        const duration = Math.ceil((Date.now() - startTime) / 60000);
+        resolve({
+          text: responseText.trim(),
+          creditsUsed,
+          duration: `${duration} min`,
+        });
+      };
+
+      const onSessionEnd = () => {
         cleanup();
         const duration = Math.ceil((Date.now() - startTime) / 60000);
         resolve({
@@ -182,6 +198,7 @@ export class WebSocketClient extends EventEmitter {
         this.off('engineer_message', onEngineerMessage);
         this.off('billing_update', onBillingUpdate);
         this.off('closure_request', onClosureRequest);
+        this.off('session_end', onSessionEnd);
         this.off('error', onError);
         clearTimeout(timeoutHandle);
       };
@@ -189,6 +206,7 @@ export class WebSocketClient extends EventEmitter {
       this.on('engineer_message', onEngineerMessage);
       this.on('billing_update', onBillingUpdate);
       this.on('closure_request', onClosureRequest);
+      this.on('session_end', onSessionEnd);
       this.on('error', onError);
 
       const timeoutHandle = setTimeout(() => {

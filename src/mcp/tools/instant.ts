@@ -73,20 +73,13 @@ export class InstantTool {
         logger.warn('Credit warning', { warning: task.warning });
       }
 
-      // Connect WebSocket
-      const token = await this.tokenManager.getValidToken();
-      const wsUrl = this.getWebSocketUrl(task.taskId, token);
-      const ws = new WebSocketClient(wsUrl);
-
-      await ws.connect();
-
-      logger.info('Waiting for engineer response...');
+      logger.info('Waiting for engineer response via polling...');
 
       // Wait for response (5 min timeout)
-      const response = await ws.waitForResponse(300000);
-
-      // Disconnect
-      ws.disconnect();
+      const response = await this.tasksApi.waitForResponse(task.taskId, {
+        timeoutMs: 300000,
+        pollIntervalMs: 3000,
+      });
 
       // Format response
       const formattedResponse = this.formatResponse(response, task.warning);
@@ -112,15 +105,6 @@ export class InstantTool {
         isError: true,
       };
     }
-  }
-
-  /**
-   * Get WebSocket connection URL
-   */
-  private getWebSocketUrl(taskId: string, token: string): string {
-    const wsProtocol = this.baseUrl.startsWith('https://') ? 'wss://' : 'ws://';
-    const host = this.baseUrl.replace(/^https?:\/\//, '');
-    return `${wsProtocol}${host}/ws?taskId=${taskId}&userType=customer&token=${token}`;
   }
 
   /**
