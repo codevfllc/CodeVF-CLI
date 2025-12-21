@@ -5,8 +5,6 @@
 
 import { TasksApi } from '../../lib/api/tasks.js';
 import { ProjectsApi } from '../../lib/api/projects.js';
-import { WebSocketClient } from '../../lib/api/websocket.js';
-import { TokenManager } from '../../lib/auth/token-manager.js';
 import { logger } from '../../lib/utils/logger.js';
 
 export interface InstantToolArgs {
@@ -22,14 +20,10 @@ export interface InstantToolResult {
 export class InstantTool {
   private tasksApi: TasksApi;
   private projectsApi: ProjectsApi;
-  private tokenManager: TokenManager;
-  private baseUrl: string;
 
-  constructor(tasksApi: TasksApi, projectsApi: ProjectsApi, tokenManager: TokenManager, baseUrl: string) {
+  constructor(tasksApi: TasksApi, projectsApi: ProjectsApi) {
     this.tasksApi = tasksApi;
     this.projectsApi = projectsApi;
-    this.tokenManager = tokenManager;
-    this.baseUrl = baseUrl;
   }
 
   /**
@@ -62,7 +56,6 @@ export class InstantTool {
       const task = await this.tasksApi.create({
         message: args.message,
         taskMode: 'realtime_answer',
-        status: "requested",
         maxCredits,
         projectId: project.id.toString(),
       });
@@ -75,8 +68,6 @@ export class InstantTool {
       }
 
       logger.info('Waiting for engineer response via polling...');
-
-      console.log(`[Debug] Running on ${wsUrl}`);
 
       // Wait for response (5 min timeout)
       const response = await this.tasksApi.waitForResponse(task.taskId, {

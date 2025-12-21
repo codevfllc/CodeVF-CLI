@@ -272,7 +272,7 @@ export async function setupCommand(): Promise<void> {
 
         if (data.success && data.selectionOptions) {
           console.log(chalk.dim('\n' + (data.message || '')));
-          
+
           const { selectedProject } = await prompts({
             type: 'select',
             name: 'selectedProject',
@@ -287,22 +287,98 @@ export async function setupCommand(): Promise<void> {
 
           projectId = selectedProject === 'new' ? undefined : selectedProject;
         } else {
-          // Fallback if API fails
-          const { manualProjectId } = await prompts({
-            type: 'text',
-            name: 'manualProjectId',
-            message: 'Default project ID (optional):',
-            initial: '',
+          // Provide user-friendly fallback when API fails
+          spinner.warn('Could not load existing projects from server');
+
+          const { projectChoice } = await prompts({
+            type: 'select',
+            name: 'projectChoice',
+            message: 'How would you like to configure the default project?',
+            choices: [
+              {
+                title: '🆕 Create a new project when needed',
+                description: 'The CLI will create a new project automatically',
+                value: 'new'
+              },
+              {
+                title: '📝 Enter a specific project ID',
+                description: 'If you know the ID of an existing project',
+                value: 'manual'
+              },
+              {
+                title: '⏩ Skip for now',
+                description: 'You can configure this later',
+                value: 'skip'
+              }
+            ],
+            initial: 0,
           });
-          projectId = manualProjectId;
+
+          if (projectChoice === 'manual') {
+            const { manualProjectId } = await prompts({
+              type: 'text',
+              name: 'manualProjectId',
+              message: 'Enter project ID:',
+              initial: '',
+              validate: (value) => {
+                if (!value.trim()) return 'Project ID cannot be empty';
+                if (!/^\d+$/.test(value.trim())) return 'Project ID must be a number';
+                return true;
+              }
+            });
+            projectId = manualProjectId?.trim();
+          } else {
+            projectId = undefined; // Either 'new' or 'skip' - both result in no default project
+          }
         }
       } else {
-        spinner.warn('Could not load projects, skipping selection');
-        projectId = undefined;
+        spinner.warn('Could not connect to CodeVF servers');
+
+        const { offlineChoice } = await prompts({
+          type: 'select',
+          name: 'offlineChoice',
+          message: 'Unable to fetch projects. How would you like to proceed?',
+          choices: [
+            {
+              title: '🆕 Create new projects automatically',
+              description: 'The CLI will create projects as needed',
+              value: 'auto'
+            },
+            {
+              title: '⏩ Skip project configuration',
+              description: 'Configure later when connection is available',
+              value: 'skip'
+            }
+          ],
+          initial: 0,
+        });
+
+        projectId = undefined; // No default project in offline mode
       }
     } catch (error) {
-      spinner.warn('Could not load projects, skipping selection');
-      projectId = undefined;
+      spinner.warn('Connection error while loading projects');
+      console.log(chalk.dim(`   Error: ${(error as Error).message}`));
+
+      const { errorChoice } = await prompts({
+        type: 'select',
+        name: 'errorChoice',
+        message: 'Unable to connect to CodeVF. How would you like to proceed?',
+        choices: [
+          {
+            title: '🆕 Create new projects automatically',
+            description: 'The CLI will create projects when needed',
+            value: 'auto'
+          },
+          {
+            title: '⏩ Skip project configuration',
+            description: 'Configure later when connection is restored',
+            value: 'skip'
+          }
+        ],
+        initial: 0,
+      });
+
+      projectId = undefined; // No default project when connection fails
     }
 
     // Save MCP configuration

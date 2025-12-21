@@ -13,7 +13,7 @@ export interface CreateTaskOptions {
   taskMode: TaskMode;
   maxCredits: number;
   projectId?: string;
-  status: string;
+  status?: string;
   contextData?: any;
   initiatedBy?: string;
 }

@@ -30,7 +30,7 @@ async function main() {
   }
 
   // Check if configured
-  const configManager = new ConfigManager('config.json');
+  const configManager = new ConfigManager('mcp-config.json');
   if (!configManager.exists()) {
     console.error('Error: Not configured. Run: codevf setup');
     process.exit(1);
@@ -51,7 +51,7 @@ async function main() {
   const defaultProjectId = config.defaults?.projectId || '1';
   const tasksApi = new TasksApi(apiClient, config.baseUrl, defaultProjectId);
   const projectsApi = new ProjectsApi(apiClient);
-  const instantTool = new InstantTool(tasksApi, projectsApi, tokenManager, config.baseUrl);
+  const instantTool = new InstantTool(tasksApi, projectsApi);
   const chatTool = new ChatTool(tasksApi, config.baseUrl);
   const listenTool = new ListenTool(tasksApi, config.baseUrl);
   const tunnelTool = new TunnelTool();
@@ -64,6 +64,7 @@ async function main() {
     },
     {
       capabilities: {
+        tools: {},
       },
     }
   );
