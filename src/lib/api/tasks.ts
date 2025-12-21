@@ -3,7 +3,7 @@
  */
 
 import { ApiClient } from './client.js';
-import { InsufficientCreditsError } from '../utils/errors.js';
+import { InsufficientCreditsError, TimeoutError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
 export type TaskMode = 'realtime_answer' | 'realtime_chat' | 'fast' | 'standard';
@@ -25,6 +25,21 @@ export interface CreateTaskResult {
   creditsRemaining: number;
   maxCreditsAllocated: number;
   warning?: string;
+}
+
+export interface TaskMessage {
+  id?: string | number;
+  sender?: string;
+  content?: string;
+  timestamp?: string;
+}
+
+export interface TaskStatus {
+  status: string;
+  actualCreditsUsed?: number | null;
+  response?: string | null;
+  messages?: TaskMessage[];
+  completedAt?: string | null;
 }
 
 export class TasksApi {
@@ -97,5 +112,68 @@ export class TasksApi {
     }
 
     return response.data;
+  }
+
+  /**
+   * Poll for an engineer response
+   */
+  async waitForResponse(
+    taskId: string,
+    options: { timeoutMs?: number; pollIntervalMs?: number } = {}
+  ): Promise<{ text: string; creditsUsed: number; duration: string }> {
+    const timeoutMs = options.timeoutMs ?? 300000;
+    const pollIntervalMs = options.pollIntervalMs ?? 3000;
+    const startTime = Date.now();
+    const seenMessageIds = new Set<string>();
+    let responseText = '';
+    let creditsUsed = 0;
+
+    while (Date.now() - startTime < timeoutMs) {
+      const status = (await this.getStatus(taskId)) as TaskStatus;
+
+      if (typeof status.actualCreditsUsed === 'number') {
+        creditsUsed = status.actualCreditsUsed;
+      }
+
+      if (Array.isArray(status.messages)) {
+        for (const message of status.messages) {
+          if (message.sender !== 'engineer') {
+            continue;
+          }
+
+          const messageId = String(message.id ?? message.timestamp ?? message.content ?? '');
+          if (!messageId || seenMessageIds.has(messageId)) {
+            continue;
+          }
+
+          seenMessageIds.add(messageId);
+
+          if (message.content) {
+            responseText += `${message.content}\n`;
+          }
+        }
+      }
+
+      if (status.response && !responseText.includes(status.response)) {
+        responseText += `${responseText ? '\n' : ''}${status.response}\n`;
+      }
+
+      if (status.status === 'completed') {
+        break;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+
+    if (Date.now() - startTime >= timeoutMs) {
+      throw new TimeoutError('Timeout waiting for engineer response');
+    }
+
+    const duration = Math.ceil((Date.now() - startTime) / 60000);
+    return {
+      text: responseText.trim(),
+      creditsUsed,
+      duration: `${duration} min`,
+    };
   }
 }

@@ -133,9 +133,9 @@ export interface WebSocketMessage {
 export interface EngineerMessage extends WebSocketMessage {
   type: 'engineer_message';
   payload: {
-    engineerId: string;
-    engineerName: string;
-    message: string;
+    id?: string;
+    content: string;  // Changed from 'message' to match server format
+    sender?: string;
   };
 }
 
