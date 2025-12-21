@@ -51,8 +51,8 @@ async function main() {
   const defaultProjectId = config.defaults?.projectId || '1';
   const tasksApi = new TasksApi(apiClient, config.baseUrl, defaultProjectId);
   const projectsApi = new ProjectsApi(apiClient);
-  const instantTool = new InstantTool(tasksApi, projectsApi);
-  const chatTool = new ChatTool(tasksApi, config.baseUrl);
+  const instantTool = new InstantTool(tasksApi, projectsApi, config.baseUrl);
+  const chatTool = new ChatTool(tasksApi, projectsApi, config.baseUrl);
   const listenTool = new ListenTool(tasksApi, config.baseUrl);
   const tunnelTool = new TunnelTool();
 
@@ -90,6 +90,36 @@ async function main() {
                 default: 10,
                 minimum: 1,
               },
+              attachments: {
+                type: 'array',
+                description: 'Optional file attachments (screenshots, logs, design files, etc.). Maximum 5 files.',
+                items: {
+                  type: 'object',
+                  properties: {
+                    fileName: {
+                      type: 'string',
+                      description: 'Name of the file (e.g., "screenshot.png", "error.log")',
+                    },
+                    content: {
+                      type: 'string',
+                      description: 'File content: base64 encoded for images/PDFs, raw text for text files',
+                    },
+                    mimeType: {
+                      type: 'string',
+                      description: 'MIME type (e.g., "image/png", "text/plain", "application/pdf")',
+                    },
+                  },
+                  required: ['fileName', 'content', 'mimeType'],
+                },
+                maxItems: 5,
+              },
+              assignmentTimeoutSeconds: {
+                type: 'number',
+                description: 'Engineer assignment timeout in seconds (30-1800, default: 300). Time engineer has to accept before moving to next engineer.',
+                default: 300,
+                minimum: 30,
+                maximum: 1800,
+              },
             },
             required: ['message', 'maxCredits'],
           },
@@ -112,6 +142,36 @@ async function main() {
                 default: 240,
                 minimum: 4,
                 maximum: 1920,
+              },
+              attachments: {
+                type: 'array',
+                description: 'Optional file attachments (screenshots, logs, design files, etc.). Maximum 5 files.',
+                items: {
+                  type: 'object',
+                  properties: {
+                    fileName: {
+                      type: 'string',
+                      description: 'Name of the file (e.g., "screenshot.png", "error.log")',
+                    },
+                    content: {
+                      type: 'string',
+                      description: 'File content: base64 encoded for images/PDFs, raw text for text files',
+                    },
+                    mimeType: {
+                      type: 'string',
+                      description: 'MIME type (e.g., "image/png", "text/plain", "application/pdf")',
+                    },
+                  },
+                  required: ['fileName', 'content', 'mimeType'],
+                },
+                maxItems: 5,
+              },
+              assignmentTimeoutSeconds: {
+                type: 'number',
+                description: 'Engineer assignment timeout in seconds (30-1800, default: 300). Time engineer has to accept before moving to next engineer.',
+                default: 300,
+                minimum: 30,
+                maximum: 1800,
               },
             },
             required: ['message'],
