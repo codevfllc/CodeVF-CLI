@@ -10,6 +10,7 @@ import path from 'path';
 import os from 'os';
 import { ConfigManager } from '../lib/config/manager.js';
 import { OAuthFlow } from '../lib/auth/oauth-flow.js';
+import { commandContent } from './cvf-command-content.js';
 
 /**
  * Get Claude Code config path based on platform
@@ -46,63 +47,6 @@ function createCvfSlashCommand(): boolean {
       console.log(chalk.green('✅ /cvf slash command already exists'));
       return true;
     }
-
-    // Create the slash command file
-    const commandContent = `---
-description: Ask a CodeVF engineer for help with code validation, debugging, or technical questions
----
-
-# CodeVF Engineer Assistance
-
-Please help me with the following question or task by consulting a CodeVF engineer using the appropriate MCP tool:
-
-**My request:**
-{{PROMPT}}
-
----
-
-**Instructions for Claude:**
-
-1. **Analyze the request** to determine which CodeVF tool is most appropriate:
-   - Use \`codevf-instant\` for:
-     - Quick validation questions (1-10 credits, ~2 min response)
-     - "Does this fix work?"
-     - "Is this approach correct?"
-     - "Can you identify the error?"
-     - Simple technical questions
-
-   - Use \`codevf-chat\` for:
-     - Complex debugging requiring back-and-forth (4-1920 credits, 2 credits/min)
-     - Multi-step troubleshooting
-     - Architecture discussions
-     - Extended collaboration
-
-   - Use \`codevf-tunnel\` for:
-     - Creating secure tunnels to expose local dev servers
-     - Testing webhooks, OAuth callbacks, or external integrations
-     - Sharing local development environment with engineers
-     - No credits required - tunnel remains active for session
-
-2. **Use the appropriate tool:**
-   - For instant queries: Call \`codevf-instant\` with the message and appropriate maxCredits (1-10)
-   - For extended sessions: Call \`codevf-chat\` with the message and appropriate maxCredits (suggest 240 for ~2 hours)
-   - For tunnel access: Call \`codevf-tunnel\` with the port number (e.g., { "port": 3000 })
-
-3. **Present the response:**
-   - For instant queries: Share the engineer's response directly
-   - For chat sessions: Provide the session URL so the user can monitor the conversation
-   - For tunnels: Share the public URL that was created
-
-**Credit Guidelines:**
-- Instant validation: 1-10 credits (typically 3-5 credits per question)
-- Extended chat: 2 credits per minute (240 credits = 2 hours)
-- Tunnel creation: Free (no credits required)
-
-**Example Usage:**
-- \`/cvf Does this authentication fix prevent the timing attack?\` → Use codevf-instant
-- \`/cvf Complex race condition in WebSocket reconnection needs debugging\` → Use codevf-chat
-- \`/cvf Create tunnel to my dev server on port 3000\` → Use codevf-tunnel
-`;
 
     fs.writeFileSync(cvfCommandPath, commandContent, { mode: 0o644 });
     console.log(chalk.green('✅ Created /cvf slash command for Claude Code'));
