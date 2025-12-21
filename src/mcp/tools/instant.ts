@@ -61,8 +61,8 @@ export class InstantTool {
         };
       }
 
-      // Validate and normalize timeout (default 300 seconds = 5 minutes)
-      let assignmentTimeoutSeconds = 300; // Default
+      // Validate and normalize timeout (default 300 seconds = 5 minutes for Claude agent)
+      let assignmentTimeoutSeconds = 300; // Always default to 5 minutes for Claude agent
       if (args.assignmentTimeoutSeconds !== undefined) {
         if (typeof args.assignmentTimeoutSeconds !== 'number') {
           return {

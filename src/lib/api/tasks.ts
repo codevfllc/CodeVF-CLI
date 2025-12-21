@@ -63,6 +63,7 @@ export class TasksApi {
       maxCredits: options.maxCredits,
       requestedProjectId: options.projectId,
       defaultProjectId: this.defaultProjectId,
+      assignmentTimeoutSeconds: options.assignmentTimeoutSeconds,
     });
 
     const response = await this.client.post('/api/cli/tasks/create', {
@@ -74,7 +75,7 @@ export class TasksApi {
       contextData: options.contextData ? JSON.stringify(options.contextData) : null,
       initiatedBy: options.initiatedBy || 'ai_tool',
       autoApproveCommands: false,
-      assignmentTimeoutSeconds: options.assignmentTimeoutSeconds,
+      assignmentTimeoutSeconds: options.assignmentTimeoutSeconds, // Always send if provided
     });
 
     if (!response.success || !response.data) {

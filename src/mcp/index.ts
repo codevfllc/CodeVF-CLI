@@ -115,7 +115,7 @@ async function main() {
               },
               assignmentTimeoutSeconds: {
                 type: 'number',
-                description: 'Engineer assignment timeout in seconds (30-1800, default: 300). Time engineer has to accept before moving to next engineer.',
+                description: 'Engineer assignment timeout in seconds (30-1800, default: 300 for Claude agent). Time engineer has to accept before moving to next engineer.',
                 default: 300,
                 minimum: 30,
                 maximum: 1800,
@@ -168,7 +168,7 @@ async function main() {
               },
               assignmentTimeoutSeconds: {
                 type: 'number',
-                description: 'Engineer assignment timeout in seconds (30-1800, default: 300). Time engineer has to accept before moving to next engineer.',
+                description: 'Engineer assignment timeout in seconds (30-1800, default: 300 for Claude agent). Time engineer has to accept before moving to next engineer.',
                 default: 300,
                 minimum: 30,
                 maximum: 1800,
