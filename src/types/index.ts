@@ -26,6 +26,7 @@ export interface ActiveTunnel {
   subdomain?: string;
   createdAt: Date;
   taskId: string;
+  password: string; // Required - always fetched with retry logic
 }
 
 export interface AiConfig {
@@ -132,9 +133,9 @@ export interface WebSocketMessage {
 export interface EngineerMessage extends WebSocketMessage {
   type: 'engineer_message';
   payload: {
-    engineerId: string;
-    engineerName: string;
-    message: string;
+    id?: string;
+    content: string;  // Changed from 'message' to match server format
+    sender?: string;
   };
 }
 
@@ -249,6 +250,7 @@ export interface TunnelShared extends WebSocketMessage {
   payload: {
     port: number;
     url: string;
+    password: string; // Always included - fetched with retry logic
   };
 }
 
@@ -274,6 +276,7 @@ export interface ApproveTunnel extends WebSocketMessage {
   payload: {
     tunnelUrl: string;
     port: number;
+    password: string; // Required for bypassing loca.lt landing page
     expiresAt: string;
   };
 }
@@ -298,6 +301,7 @@ export interface TunnelApproved extends WebSocketMessage {
   payload: {
     tunnelUrl: string;
     port: number;
+    password: string; // Required for bypassing loca.lt landing page
     expiresAt: string;
   };
 }

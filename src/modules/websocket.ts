@@ -49,14 +49,15 @@ export class WebSocketClient extends EventEmitter {
         this.tunnelManager
       );
 
-      if (result.approved && result.tunnelUrl) {
-        // Send approval with tunnel URL
+      if (result.approved && result.tunnelUrl && result.password) {
+        // Send approval with tunnel URL and password
         this.send({
           type: 'approve_tunnel',
           timestamp: new Date().toISOString(),
           payload: {
             tunnelUrl: result.tunnelUrl,
             port: suggestedPort,
+            password: result.password, // Required for bypassing loca.lt landing page
             expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24h
           },
         });

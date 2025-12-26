@@ -17,6 +17,7 @@ import { ProjectsApi } from '../lib/api/projects.js';
 import { InstantTool } from './tools/instant.js';
 import { ChatTool } from './tools/chat.js';
 import { ListenTool } from './tools/listen.js';
+import { TunnelTool } from './tools/tunnel.js';
 import { logger, LogLevel } from '../lib/utils/logger.js';
 
 /**
@@ -29,7 +30,7 @@ async function main() {
   }
 
   // Check if configured
-  const configManager = new ConfigManager('config.json');
+  const configManager = new ConfigManager('mcp-config.json');
   if (!configManager.exists()) {
     console.error('Error: Not configured. Run: codevf setup');
     process.exit(1);
@@ -50,9 +51,10 @@ async function main() {
   const defaultProjectId = config.defaults?.projectId || '1';
   const tasksApi = new TasksApi(apiClient, config.baseUrl, defaultProjectId);
   const projectsApi = new ProjectsApi(apiClient);
-  const instantTool = new InstantTool(tasksApi, projectsApi, tokenManager, config.baseUrl);
-  const chatTool = new ChatTool(tasksApi, config.baseUrl);
+  const instantTool = new InstantTool(tasksApi, projectsApi, config.baseUrl);
+  const chatTool = new ChatTool(tasksApi, projectsApi, config.baseUrl);
   const listenTool = new ListenTool(tasksApi, config.baseUrl);
+  const tunnelTool = new TunnelTool();
 
   // Create MCP server
   const server = new Server(
@@ -62,9 +64,7 @@ async function main() {
     },
     {
       capabilities: {
-        tools: {
-          
-        },
+        tools: {},
       },
     }
   );
@@ -86,9 +86,39 @@ async function main() {
               },
               maxCredits: {
                 type: 'number',
-                description: 'Maximum credits to spend (1-10, default: 10). Rate: 1 credit/minute. You will how much credits an engineer has to take, and let the user edit this.',
+                description: 'Maximum credits to spend (1-10, default: 10). Rate: 1 credit/minute. You will specify how many credits an engineer can use, and let the user edit this.',
                 default: 10,
                 minimum: 1,
+              },
+              attachments: {
+                type: 'array',
+                description: 'Optional file attachments (screenshots, logs, design files, etc.). Maximum 5 files.',
+                items: {
+                  type: 'object',
+                  properties: {
+                    fileName: {
+                      type: 'string',
+                      description: 'Name of the file (e.g., "screenshot.png", "error.log")',
+                    },
+                    content: {
+                      type: 'string',
+                      description: 'File content: base64 encoded for images/PDFs, raw text for text files',
+                    },
+                    mimeType: {
+                      type: 'string',
+                      description: 'MIME type (e.g., "image/png", "text/plain", "application/pdf")',
+                    },
+                  },
+                  required: ['fileName', 'content', 'mimeType'],
+                },
+                maxItems: 5,
+              },
+              assignmentTimeoutSeconds: {
+                type: 'number',
+                description: 'Engineer assignment timeout in seconds (30-1800, default: 300 for Claude agent). Time engineer has to accept before moving to next engineer.',
+                default: 300,
+                minimum: 30,
+                maximum: 1800,
               },
             },
             required: ['message', 'maxCredits'],
@@ -113,29 +143,63 @@ async function main() {
                 minimum: 4,
                 maximum: 1920,
               },
+              attachments: {
+                type: 'array',
+                description: 'Optional file attachments (screenshots, logs, design files, etc.). Maximum 5 files.',
+                items: {
+                  type: 'object',
+                  properties: {
+                    fileName: {
+                      type: 'string',
+                      description: 'Name of the file (e.g., "screenshot.png", "error.log")',
+                    },
+                    content: {
+                      type: 'string',
+                      description: 'File content: base64 encoded for images/PDFs, raw text for text files',
+                    },
+                    mimeType: {
+                      type: 'string',
+                      description: 'MIME type (e.g., "image/png", "text/plain", "application/pdf")',
+                    },
+                  },
+                  required: ['fileName', 'content', 'mimeType'],
+                },
+                maxItems: 5,
+              },
+              assignmentTimeoutSeconds: {
+                type: 'number',
+                description: 'Engineer assignment timeout in seconds (30-1800, default: 300 for Claude agent). Time engineer has to accept before moving to next engineer.',
+                default: 300,
+                minimum: 30,
+                maximum: 1800,
+              },
             },
             required: ['message'],
           },
         },
         {
-          name: 'codevf-listen',
+          name: 'codevf-tunnel',
           description:
-            'Monitor active chat sessions in real-time. View status, messages, and engineer updates. Use for: tracking session progress, monitoring credits, verifying engineer responses.',
+            'Create a secure tunnel to expose a local port over the internet using localtunnel. Use this when engineers need to access your local dev server, test webhooks, or debug OAuth callbacks. The tunnel remains active for the session.',
           inputSchema: {
             type: 'object',
             properties: {
-              sessionId: {
-                type: 'string',
-                description:
-                  'Optional specific session ID to monitor. If omitted, lists all active sessions.',
+              port: {
+                type: 'number',
+                description: 'Local port number to expose (e.g., 3000 for dev server)',
+                minimum: 1,
+                maximum: 65535,
               },
-              verbose: {
-                type: 'boolean',
-                description:
-                  'Include detailed information like credits used and engineer details (default: false)',
-                default: false,
+              subdomain: {
+                type: 'string',
+                description: 'Optional subdomain for the tunnel URL (e.g., "myapp" -> https://myapp.loca.lt)',
+              },
+              reason: {
+                type: 'string',
+                description: 'Optional description of why tunnel is needed (e.g., "Testing OAuth callback")',
               },
             },
+            required: ['port'],
           },
         },
       ],
@@ -159,6 +223,9 @@ async function main() {
 
         case 'codevf-listen':
           result = await listenTool.execute(args as any);
+          break;
+        case 'codevf-tunnel':
+          result = await tunnelTool.execute(args as any);
           break;
 
         default:
@@ -198,6 +265,7 @@ async function main() {
   // Handle shutdown
   process.on('SIGINT', async () => {
     logger.info('Shutting down...');
+    await tunnelTool.closeAll();
     await server.close();
     process.exit(0);
   });

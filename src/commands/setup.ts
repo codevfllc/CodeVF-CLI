@@ -10,6 +10,7 @@ import path from 'path';
 import os from 'os';
 import { ConfigManager } from '../lib/config/manager.js';
 import { OAuthFlow } from '../lib/auth/oauth-flow.js';
+import { commandContent } from './cvf-command-content.js';
 
 /**
  * Get Claude Code config path based on platform
@@ -46,53 +47,6 @@ function createCvfSlashCommand(): boolean {
       console.log(chalk.green('✅ /cvf slash command already exists'));
       return true;
     }
-
-    // Create the slash command file
-    const commandContent = `---
-description: Ask a CodeVF engineer for help with code validation, debugging, or technical questions
----
-
-# CodeVF Engineer Assistance
-
-Please help me with the following question or task by consulting a CodeVF engineer using the appropriate MCP tool:
-
-**My request:**
-{{PROMPT}}
-
----
-
-**Instructions for Claude:**
-
-1. **Analyze the request** to determine which CodeVF tool is most appropriate:
-   - Use \`codevf-instant\` for:
-     - Quick validation questions (1-10 credits, ~2 min response)
-     - "Does this fix work?"
-     - "Is this approach correct?"
-     - "Can you identify the error?"
-     - Simple technical questions
-
-   - Use \`codevf-chat\` for:
-     - Complex debugging requiring back-and-forth (4-1920 credits, 2 credits/min)
-     - Multi-step troubleshooting
-     - Architecture discussions
-     - Extended collaboration
-
-2. **Use the appropriate tool:**
-   - For instant queries: Call \`codevf-instant\` with the message and appropriate maxCredits (1-10)
-   - For extended sessions: Call \`codevf-chat\` with the message and appropriate maxCredits (suggest 240 for ~2 hours)
-
-3. **Present the response:**
-   - For instant queries: Share the engineer's response directly
-   - For chat sessions: Provide the session URL so the user can monitor the conversation
-
-**Credit Guidelines:**
-- Instant validation: 1-10 credits (typically 3-5 credits per question)
-- Extended chat: 2 credits per minute (240 credits = 2 hours)
-
-**Example Usage:**
-- \`/cvf Does this authentication fix prevent the timing attack?\` → Use codevf-instant
-- \`/cvf Complex race condition in WebSocket reconnection needs debugging\` → Use codevf-chat
-`;
 
     fs.writeFileSync(cvfCommandPath, commandContent, { mode: 0o644 });
     console.log(chalk.green('✅ Created /cvf slash command for Claude Code'));
@@ -262,7 +216,7 @@ export async function setupCommand(): Promise<void> {
 
         if (data.success && data.selectionOptions) {
           console.log(chalk.dim('\n' + (data.message || '')));
-          
+
           const { selectedProject } = await prompts({
             type: 'select',
             name: 'selectedProject',
@@ -277,22 +231,98 @@ export async function setupCommand(): Promise<void> {
 
           projectId = selectedProject === 'new' ? undefined : selectedProject;
         } else {
-          // Fallback if API fails
-          const { manualProjectId } = await prompts({
-            type: 'text',
-            name: 'manualProjectId',
-            message: 'Default project ID (optional):',
-            initial: '',
+          // Provide user-friendly fallback when API fails
+          spinner.warn('Could not load existing projects from server');
+
+          const { projectChoice } = await prompts({
+            type: 'select',
+            name: 'projectChoice',
+            message: 'How would you like to configure the default project?',
+            choices: [
+              {
+                title: '🆕 Create a new project when needed',
+                description: 'The CLI will create a new project automatically',
+                value: 'new'
+              },
+              {
+                title: '📝 Enter a specific project ID',
+                description: 'If you know the ID of an existing project',
+                value: 'manual'
+              },
+              {
+                title: '⏩ Skip for now',
+                description: 'You can configure this later',
+                value: 'skip'
+              }
+            ],
+            initial: 0,
           });
-          projectId = manualProjectId;
+
+          if (projectChoice === 'manual') {
+            const { manualProjectId } = await prompts({
+              type: 'text',
+              name: 'manualProjectId',
+              message: 'Enter project ID:',
+              initial: '',
+              validate: (value) => {
+                if (!value.trim()) return 'Project ID cannot be empty';
+                if (!/^\d+$/.test(value.trim())) return 'Project ID must be a number';
+                return true;
+              }
+            });
+            projectId = manualProjectId?.trim();
+          } else {
+            projectId = undefined; // Either 'new' or 'skip' - both result in no default project
+          }
         }
       } else {
-        spinner.warn('Could not load projects, skipping selection');
-        projectId = undefined;
+        spinner.warn('Could not connect to CodeVF servers');
+
+        const { offlineChoice } = await prompts({
+          type: 'select',
+          name: 'offlineChoice',
+          message: 'Unable to fetch projects. How would you like to proceed?',
+          choices: [
+            {
+              title: '🆕 Create new projects automatically',
+              description: 'The CLI will create projects as needed',
+              value: 'auto'
+            },
+            {
+              title: '⏩ Skip project configuration',
+              description: 'Configure later when connection is available',
+              value: 'skip'
+            }
+          ],
+          initial: 0,
+        });
+
+        projectId = undefined; // No default project in offline mode
       }
     } catch (error) {
-      spinner.warn('Could not load projects, skipping selection');
-      projectId = undefined;
+      spinner.warn('Connection error while loading projects');
+      console.log(chalk.dim(`   Error: ${(error as Error).message}`));
+
+      const { errorChoice } = await prompts({
+        type: 'select',
+        name: 'errorChoice',
+        message: 'Unable to connect to CodeVF. How would you like to proceed?',
+        choices: [
+          {
+            title: '🆕 Create new projects automatically',
+            description: 'The CLI will create projects when needed',
+            value: 'auto'
+          },
+          {
+            title: '⏩ Skip project configuration',
+            description: 'Configure later when connection is restored',
+            value: 'skip'
+          }
+        ],
+        initial: 0,
+      });
+
+      projectId = undefined; // No default project when connection fails
     }
 
     // Save MCP configuration
@@ -323,7 +353,11 @@ export async function setupCommand(): Promise<void> {
       console.log(chalk.dim('1. Restart Claude Code to load the MCP server'));
       console.log(chalk.dim('2. Use the /cvf slash command in Claude Code:'));
       console.log(chalk.dim('   Example: ') + chalk.white('/cvf Does this fix work?'));
-      console.log(chalk.dim('3. Or ask Claude to use codevf-instant or codevf-chat tools\n'));
+      console.log(chalk.dim('   Example: ') + chalk.white('/cvf Create tunnel to port 3000'));
+      console.log(chalk.dim('3. Or ask Claude to use MCP tools directly:'));
+      console.log(chalk.dim('   - codevf-instant: Quick validation (1-10 credits)'));
+      console.log(chalk.dim('   - codevf-chat: Extended debugging (2 credits/min)'));
+      console.log(chalk.dim('   - codevf-tunnel: Expose local dev server (free)\n'));
     }
   } catch (error) {
     spinner.fail('Setup failed');

@@ -9,7 +9,6 @@ import { ConfigManager } from '../lib/config/manager.js';
 import { TokenManager } from '../lib/auth/token-manager.js';
 import { ApiClient } from '../lib/api/client.js';
 import { TasksApi } from '../lib/api/tasks.js';
-import { WebSocketClient } from '../lib/api/websocket.js';
 import { logger } from '../lib/utils/logger.js';
 
 /**
@@ -104,27 +103,13 @@ export async function handleCvfInstant(message?: string): Promise<void> {
       console.log(chalk.yellow(`  [!] ${task.warning}`));
     }
 
-    console.log(chalk.cyan(`  [→] Connecting to engineer (Task ${task.taskId})...`));
+    console.log(chalk.cyan(`  [→] Waiting for engineer response (Task ${task.taskId})...`));
 
-    // Connect WebSocket
-    const token = await tokenManager.getValidToken();
-    const wsProtocol = config.baseUrl.startsWith('https://') ? 'wss://' : 'ws://';
-    const host = config.baseUrl.replace(/^https?:\/\//, '');
-    const wsUrl = `${wsProtocol}${host}/ws?taskId=${task.taskId}&userType=customer&token=${token}`;
-
-    const ws = new WebSocketClient(wsUrl);
-    await ws.connect();
-
-    console.log(chalk.cyan('  [→] Waiting for engineer response...'));
-
-    // Wait for response (5 min timeout)
-    const response = await ws.waitForResponse(300000);
-
-    // Give the server a moment to send any final messages
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    // Disconnect
-    ws.disconnect();
+    // Wait for response via polling (5 min timeout)
+    const response = await tasksApi.waitForResponse(task.taskId, {
+      timeoutMs: 300000,
+      pollIntervalMs: 3000,
+    });
 
     // Display response
     console.log();
