@@ -116,33 +116,8 @@ export class InstantTool {
                 console.error('Failed to override task', err);
               }
             }
-            // Analyze escalation after override decision
-            console.log('Analyzing task escalation for override decision');
-            const escalationAnalysis = await analyzeTaskEscalation(
-              task?.id || '',
-              this.tasksApi,
-              project.id.toString(),
-              'instant'
-            );
-
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify(
-                    {
-                      decision: 'override',
-                      escalationPrompt: escalationAnalysis.prompt,
-                      escalationReason: escalationAnalysis.reason,
-                      taskChain: escalationAnalysis.taskChain,
-                      escalationOptions: escalationAnalysis.options,
-                    },
-                    null,
-                    2
-                  ),
-                },
-              ],
-            };
+            // Continue to create new task and poll for response
+            break;
           case 'followup':
             console.log('User chose to add as follow-up to existing task');
             // Create a follow-up task linked to the existing task
@@ -159,31 +134,20 @@ export class InstantTool {
                   followUpTaskId: followupData.data.taskId,
                 });
 
-                // Analyze escalation after follow-up creation
-                console.log('Analyzing task escalation for follow-up task');
-                const escalationAnalysis = await analyzeTaskEscalation(
-                  followupData.data.taskId,
-                  this.tasksApi,
-                  project.id.toString(),
-                  'instant'
-                );
+                // Poll for response on the new follow-up task
+                console.log('Waiting for engineer response on follow-up task via polling...');
+                const response = await this.tasksApi.waitForResponse(followupData.data.taskId, {
+                  timeoutMs: 300000,
+                  pollIntervalMs: 3000,
+                });
+
+                console.log('Response received on follow-up task', { taskId: followupData.data.taskId });
 
                 return {
                   content: [
                     {
                       type: 'text',
-                      text: JSON.stringify(
-                        {
-                          decision: 'followup',
-                          newTaskId: followupData.data.taskId,
-                          escalationPrompt: escalationAnalysis.prompt,
-                          escalationReason: escalationAnalysis.reason,
-                          taskChain: escalationAnalysis.taskChain,
-                          escalationOptions: escalationAnalysis.options,
-                        },
-                        null,
-                        2
-                      ),
+                      text: response.text,
                     },
                   ],
                 };
@@ -233,31 +197,20 @@ export class InstantTool {
                   followUpTaskId: followupData.data.taskId,
                 });
 
-                // Analyze escalation after follow-up creation
-                console.log('Analyzing task escalation for follow-up task');
-                const escalationAnalysis = await analyzeTaskEscalation(
-                  followupData.data.taskId,
-                  this.tasksApi,
-                  project.id.toString(),
-                  'instant'
-                );
+                // Poll for response on the new follow-up task
+                console.log('Waiting for engineer response on follow-up task via polling...');
+                const response = await this.tasksApi.waitForResponse(followupData.data.taskId, {
+                  timeoutMs: 300000,
+                  pollIntervalMs: 3000,
+                });
+
+                console.log('Response received on follow-up task', { taskId: followupData.data.taskId });
 
                 return {
                   content: [
                     {
                       type: 'text',
-                      text: JSON.stringify(
-                        {
-                          decision: 'followup',
-                          newTaskId: followupData.data.taskId,
-                          escalationPrompt: escalationAnalysis.prompt,
-                          escalationReason: escalationAnalysis.reason,
-                          taskChain: escalationAnalysis.taskChain,
-                          escalationOptions: escalationAnalysis.options,
-                        },
-                        null,
-                        2
-                      ),
+                      text: response.text,
                     },
                   ],
                 };
@@ -286,34 +239,8 @@ export class InstantTool {
               } catch (err) {
                 console.error('Failed to override task', err);
               }
-
-              // Analyze escalation after override decision
-              console.log('Analyzing task escalation for override decision');
-              const escalationAnalysis = await analyzeTaskEscalation(
-                taskCheck.taskToResumeId,
-                this.tasksApi,
-                project.id.toString(),
-                'instant'
-              );
-
-              return {
-                content: [
-                  {
-                    type: 'text',
-                    text: JSON.stringify(
-                      {
-                        decision: 'override',
-                        escalationPrompt: escalationAnalysis.prompt,
-                        escalationReason: escalationAnalysis.reason,
-                        taskChain: escalationAnalysis.taskChain,
-                        escalationOptions: escalationAnalysis.options,
-                      },
-                      null,
-                      2
-                    ),
-                  },
-                ],
-              };
+              // Continue to create new task and poll for response
+              break;
           }
         }
 
