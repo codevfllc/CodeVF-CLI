@@ -35,12 +35,7 @@ export class InstantTool {
   private apiClient: ApiClient;
   private baseUrl: string;
 
-  constructor(
-    tasksApi: TasksApi,
-    projectsApi: ProjectsApi,
-    apiClient: ApiClient,
-    baseUrl: string
-  ) {
+  constructor(tasksApi: TasksApi, projectsApi: ProjectsApi, apiClient: ApiClient, baseUrl: string) {
     this.tasksApi = tasksApi;
     this.projectsApi = projectsApi;
     this.apiClient = apiClient;
@@ -122,47 +117,13 @@ export class InstantTool {
             console.log('User chose to add as follow-up to existing task');
             // Create a follow-up task linked to the existing task
             if (task?.id) {
-              try {
-                console.log('Creating follow-up task', { parentTaskId: task.id });
-                const followupData = (await this.apiClient.post(`/api/cli/tasks/${task.id}/followup`, {
-                  message: args.message,
-                  projectId: project.id.toString(),
-                  maxCredits: args.maxCredits || 10,
-                  assignmentTimeoutSeconds: args.assignmentTimeoutSeconds,
-                })) as { success: boolean; data: CreateTaskResult };
-                console.log('Follow-up task created', {
-                  followUpTaskId: followupData.data.taskId,
-                });
-
-                // Poll for response on the new follow-up task
-                console.log('Waiting for engineer response on follow-up task via polling...');
-                const response = await this.tasksApi.waitForResponse(followupData.data.taskId, {
-                  timeoutMs: 300000,
-                  pollIntervalMs: 3000,
-                });
-
-                console.log('Response received on follow-up task', { taskId: followupData.data.taskId });
-
-                return {
-                  content: [
-                    {
-                      type: 'text',
-                      text: response.text,
-                    },
-                  ],
-                };
-              } catch (err) {
-                console.error('Failed to create follow-up task', err);
-                return {
-                  content: [
-                    {
-                      type: 'text',
-                      text: `Error: Failed to create follow-up task: ${(err as Error).message}`,
-                    },
-                  ],
-                  isError: true,
-                };
-              }
+              return await this.createAndPollFollowupTask(
+                task.id,
+                project.id.toString(),
+                args.message,
+                args.maxCredits,
+                args.assignmentTimeoutSeconds
+              );
             }
             break;
         }
@@ -180,61 +141,25 @@ export class InstantTool {
           switch (args.decision) {
             case 'followup':
               console.log('User chose to add as follow-up to continued task');
-              try {
-                console.log('Creating follow-up task', {
-                  parentTaskId: taskCheck.taskToResumeId,
-                });
-                const followupData = (await this.apiClient.post(
-                  `/api/cli/tasks/${taskCheck.taskToResumeId}/followup`,
-                  {
-                    message: args.message,
-                    projectId: project.id.toString(),
-                    maxCredits: args.maxCredits || 10,
-                    assignmentTimeoutSeconds: args.assignmentTimeoutSeconds,
-                  }
-                )) as { success: boolean; data: CreateTaskResult };
-                console.log('Follow-up task created', {
-                  followUpTaskId: followupData.data.taskId,
-                });
-
-                // Poll for response on the new follow-up task
-                console.log('Waiting for engineer response on follow-up task via polling...');
-                const response = await this.tasksApi.waitForResponse(followupData.data.taskId, {
-                  timeoutMs: 300000,
-                  pollIntervalMs: 3000,
-                });
-
-                console.log('Response received on follow-up task', { taskId: followupData.data.taskId });
-
-                return {
-                  content: [
-                    {
-                      type: 'text',
-                      text: response.text,
-                    },
-                  ],
-                };
-              } catch (err) {
-                console.error('Failed to create follow-up task', err);
-                return {
-                  content: [
-                    {
-                      type: 'text',
-                      text: `Error: Failed to create follow-up task: ${(err as Error).message}`,
-                    },
-                  ],
-                  isError: true,
-                };
-              }
+              return await this.createAndPollFollowupTask(
+                taskCheck.taskToResumeId,
+                project.id.toString(),
+                args.message,
+                args.maxCredits,
+                args.assignmentTimeoutSeconds
+              );
             case 'override':
               console.log('User chose to override continued task');
               try {
                 console.log('Overriding existing task', {
                   taskId: taskCheck.taskToResumeId,
                 });
-                await this.apiClient.request(`/api/cli/tasks/${taskCheck.taskToResumeId}/override`, {
-                  method: 'POST',
-                });
+                await this.apiClient.request(
+                  `/api/cli/tasks/${taskCheck.taskToResumeId}/override`,
+                  {
+                    method: 'POST',
+                  }
+                );
                 console.log('Task overridden successfully');
               } catch (err) {
                 console.error('Failed to override task', err);
@@ -411,7 +336,10 @@ export class InstantTool {
       });
 
       // Format response
-      const formattedResponse = this.formatResponse(response);
+      const formattedResponse = this.formatResponse({
+        ...response,
+        duration: parseInt(response.duration),
+      });
 
       return {
         content: [
@@ -480,6 +408,61 @@ export class InstantTool {
         });
         throw new Error(`Failed to upload ${attachment.fileName}: ${(error as any).message}`);
       }
+    }
+  }
+
+  /**
+   * Create a follow-up task and poll for the engineer's response
+   */
+  private async createAndPollFollowupTask(
+    parentTaskId: string,
+    projectId: string,
+    message: string,
+    maxCredits?: number,
+    assignmentTimeoutSeconds?: number
+  ): Promise<InstantToolResult> {
+    try {
+      console.log('Creating follow-up task', { parentTaskId });
+      const followupData = (await this.apiClient.post(`/api/cli/tasks/${parentTaskId}/followup`, {
+        message,
+        projectId,
+        maxCredits: maxCredits || 10,
+        assignmentTimeoutSeconds,
+      })) as { success: boolean; data: CreateTaskResult };
+      console.log('Follow-up task created', {
+        followUpTaskId: followupData.data.taskId,
+      });
+
+      // Poll for response on the new follow-up task
+      console.log('Waiting for engineer response on follow-up task via polling...');
+      const response = await this.tasksApi.waitForResponse(followupData.data.taskId, {
+        timeoutMs: 300000,
+        pollIntervalMs: 3000,
+      });
+
+      console.log('Response received on follow-up task', {
+        taskId: followupData.data.taskId,
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: response.text,
+          },
+        ],
+      };
+    } catch (err) {
+      console.error('Failed to create follow-up task', err);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: Failed to create follow-up task: ${(err as Error).message}`,
+          },
+        ],
+        isError: true,
+      };
     }
   }
 
