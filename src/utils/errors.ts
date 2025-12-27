@@ -1,30 +1,31 @@
 import chalk from 'chalk';
 import { CodeVFError } from '../types/index.js';
+import { logger } from '../lib/utils/logger.js';
 
 export function handleError(error: unknown): void {
   if (error instanceof CodeVFError) {
-    console.error(chalk.red(`\nError: ${error.message}`));
+    logger.error(chalk.red(`\nError: ${error.message}`));
 
     if (error.code) {
-      console.error(chalk.dim(`Code: ${error.code}`));
+      logger.error(chalk.dim(`Code: ${error.code}`));
     }
 
     // Provide helpful hints based on error type
     switch (error.name) {
       case 'AuthError':
-        console.error(chalk.yellow('\nPlease run: codevf login'));
+        logger.error(chalk.yellow('\nPlease run: codevf login'));
         break;
       case 'ConfigError':
-        console.error(chalk.yellow('\nPlease run: codevf init'));
+        logger.error(chalk.yellow('\nPlease run: codevf init'));
         break;
       case 'NetworkError':
-        console.error(chalk.yellow('\nPlease check your internet connection.'));
+        logger.error(chalk.yellow('\nPlease check your internet connection.'));
         break;
     }
   } else if (error instanceof Error) {
-    console.error(chalk.red(`\nError: ${error.message}`));
+    logger.error(chalk.red(`\nError: ${error.message}`));
   } else {
-    console.error(chalk.red('\nAn unexpected error occurred.'));
+    logger.error(chalk.red('\nAn unexpected error occurred.'));
   }
 
   process.exit(1);

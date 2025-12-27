@@ -8,6 +8,7 @@ import { ProjectsApi } from '../../lib/api/projects.js';
 import { ApiClient } from '../../lib/api/client.js';
 import axios from 'axios';
 import { checkForActiveTasks, analyzeTaskEscalation } from './task-checker.js';
+import { logger } from '../../lib/utils/logger.js';
 
 export interface FileAttachment {
   fileName: string;
@@ -47,7 +48,7 @@ export class InstantTool {
    */
   async execute(args: InstantToolArgs): Promise<InstantToolResult> {
     try {
-      console.log('Executing codevf-instant', {
+      logger.info('Executing codevf-instant', {
         message: args.message,
         attachmentCount: args.attachments?.length || 0,
         continueTaskId: args.continueTaskId,
@@ -55,9 +56,9 @@ export class InstantTool {
       });
 
       // Get or create a project for this task
-      console.log('Getting or creating project for instant query');
+      logger.info('Getting or creating project for instant query');
       const project = await this.projectsApi.getOrCreateDefault();
-      console.log('Using project', { projectId: project.id, repoUrl: project.repoUrl });
+      logger.info('Using project', { projectId: project.id, repoUrl: project.repoUrl });
 
       // Check for active tasks and ask user for preference
       const taskCheck = await checkForActiveTasks(
@@ -94,27 +95,27 @@ export class InstantTool {
         }
 
         // Handle the user's decision
-        console.log('Processing user decision', { decision: args.decision, taskId: task?.id });
+        logger.info('Processing user decision', { decision: args.decision, taskId: task?.id });
 
         switch (args.decision) {
           case 'override':
-            console.log('User chose to override existing task');
+            logger.info('User chose to override existing task');
             // Close the old task before creating new one
             if (task?.id) {
               try {
-                console.log('Overriding existing task', { taskId: task.id });
+                logger.info('Overriding existing task', { taskId: task.id });
                 await this.apiClient.request(`/api/cli/tasks/${task.id}/override`, {
                   method: 'POST',
                 });
-                console.log('Task overridden successfully');
+                logger.info('Task overridden successfully');
               } catch (err) {
-                console.error('Failed to override task', err);
+                logger.error('Failed to override task', err);
               }
             }
             // Continue to create new task and poll for response
             break;
           case 'followup':
-            console.log('User chose to add as follow-up to existing task');
+            logger.info('User chose to add as follow-up to existing task');
             // Create a follow-up task linked to the existing task
             if (task?.id) {
               return await this.createAndPollFollowupTask(
@@ -133,14 +134,14 @@ export class InstantTool {
       if (!taskCheck.shouldPromptUser && taskCheck.taskToResumeId) {
         // If a decision was provided with continueTaskId, handle it
         if (args.decision) {
-          console.log('Processing decision with continued task', {
+          logger.info('Processing decision with continued task', {
             decision: args.decision,
             taskId: taskCheck.taskToResumeId,
           });
 
           switch (args.decision) {
             case 'followup':
-              console.log('User chose to add as follow-up to continued task');
+              logger.info('User chose to add as follow-up to continued task');
               return await this.createAndPollFollowupTask(
                 taskCheck.taskToResumeId,
                 project.id.toString(),
@@ -149,9 +150,9 @@ export class InstantTool {
                 args.assignmentTimeoutSeconds
               );
             case 'override':
-              console.log('User chose to override continued task');
+              logger.info('User chose to override continued task');
               try {
-                console.log('Overriding existing task', {
+                logger.info('Overriding existing task', {
                   taskId: taskCheck.taskToResumeId,
                 });
                 await this.apiClient.request(
@@ -160,9 +161,9 @@ export class InstantTool {
                     method: 'POST',
                   }
                 );
-                console.log('Task overridden successfully');
+                logger.info('Task overridden successfully');
               } catch (err) {
-                console.error('Failed to override task', err);
+                logger.error('Failed to override task', err);
               }
               // Continue to create new task and poll for response
               break;
@@ -170,9 +171,9 @@ export class InstantTool {
         }
 
         // No decision provided, just resume the task
-        console.log('Resuming existing task', { taskId: taskCheck.taskToResumeId });
+        logger.info('Resuming existing task', { taskId: taskCheck.taskToResumeId });
 
-        console.log('Waiting for engineer response via polling...');
+        logger.info('Waiting for engineer response via polling...');
 
         // Wait for response (5 min timeout)
         const response = await this.tasksApi.waitForResponse(taskCheck.taskToResumeId, {
@@ -180,7 +181,7 @@ export class InstantTool {
           pollIntervalMs: 3000,
         });
 
-        console.log('Response received', { taskId: taskCheck.taskToResumeId });
+        logger.info('Response received', { taskId: taskCheck.taskToResumeId });
 
         return {
           content: [
@@ -299,17 +300,17 @@ export class InstantTool {
         assignmentTimeoutSeconds,
       });
 
-      console.log('Task created', { taskId: task.taskId });
+      logger.info('Task created', { taskId: task.taskId });
 
       // Upload attachments if provided
       if (args.attachments && args.attachments.length > 0) {
-        console.log('Uploading attachments', { count: args.attachments.length });
+        logger.info('Uploading attachments', { count: args.attachments.length });
 
         try {
           await this.uploadAttachments(task.taskId, args.attachments);
-          console.log('All attachments uploaded successfully');
+          logger.info('All attachments uploaded successfully');
         } catch (uploadError) {
-          console.error('Failed to upload attachments', uploadError);
+          logger.error('Failed to upload attachments', uploadError);
           return {
             content: [
               {
@@ -324,10 +325,10 @@ export class InstantTool {
 
       // Show warning if low balance
       if (task.warning) {
-        console.warn('Credit warning', { warning: task.warning });
+        logger.warn('Credit warning', { warning: task.warning });
       }
 
-      console.log('Waiting for engineer response via polling...');
+      logger.info('Waiting for engineer response via polling...');
 
       // Wait for response (5 min timeout)
       const response = await this.tasksApi.waitForResponse(task.taskId, {
@@ -350,7 +351,7 @@ export class InstantTool {
         ],
       };
     } catch (error) {
-      console.error('codevf-instant failed', error);
+      logger.error('codevf-instant failed', error);
 
       return {
         content: [
@@ -373,7 +374,7 @@ export class InstantTool {
 
     for (const attachment of attachments) {
       try {
-        console.log('Uploading attachment', {
+        logger.info('Uploading attachment', {
           fileName: attachment.fileName,
           mimeType: attachment.mimeType,
         });
@@ -397,12 +398,12 @@ export class InstantTool {
           throw new Error(response.data.error || 'Upload failed');
         }
 
-        console.log('Attachment uploaded successfully', {
+        logger.info('Attachment uploaded successfully', {
           fileName: attachment.fileName,
           size: response.data.data?.size || 0,
         });
       } catch (error) {
-        console.error('Failed to upload attachment', {
+        logger.error('Failed to upload attachment', {
           fileName: attachment.fileName,
           error: (error as any).message,
         });
@@ -422,25 +423,25 @@ export class InstantTool {
     assignmentTimeoutSeconds?: number
   ): Promise<InstantToolResult> {
     try {
-      console.log('Creating follow-up task', { parentTaskId });
+      logger.info('Creating follow-up task', { parentTaskId });
       const followupData = (await this.apiClient.post(`/api/cli/tasks/${parentTaskId}/followup`, {
         message,
         projectId,
         maxCredits: maxCredits || 10,
         assignmentTimeoutSeconds,
       })) as { success: boolean; data: CreateTaskResult };
-      console.log('Follow-up task created', {
+      logger.info('Follow-up task created', {
         followUpTaskId: followupData.data.taskId,
       });
 
       // Poll for response on the new follow-up task
-      console.log('Waiting for engineer response on follow-up task via polling...');
+      logger.info('Waiting for engineer response on follow-up task via polling...');
       const response = await this.tasksApi.waitForResponse(followupData.data.taskId, {
         timeoutMs: 300000,
         pollIntervalMs: 3000,
       });
 
-      console.log('Response received on follow-up task', {
+      logger.info('Response received on follow-up task', {
         taskId: followupData.data.taskId,
       });
 
@@ -453,7 +454,7 @@ export class InstantTool {
         ],
       };
     } catch (err) {
-      console.error('Failed to create follow-up task', err);
+      logger.error('Failed to create follow-up task', err);
       return {
         content: [
           {

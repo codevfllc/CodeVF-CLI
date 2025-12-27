@@ -81,7 +81,7 @@ export class TokenManager {
 
       this.configManager.updateAuth({
         accessToken: data.token,
-        refreshToken: config.auth.refreshToken || data.token,
+        refreshToken: config.auth.refreshToken,
         expiresAt: expiresAt.toISOString(),
         userId: config.auth.userId,
       });
