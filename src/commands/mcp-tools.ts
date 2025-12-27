@@ -95,7 +95,6 @@ export async function handleCvfInstant(message?: string): Promise<void> {
       message: finalMessage!,
       taskMode: 'realtime_answer',
       maxCredits,
-      status: 'requested',
       projectId: defaultProjectId,
     });
 
