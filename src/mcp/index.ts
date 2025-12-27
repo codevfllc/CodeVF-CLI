@@ -196,6 +196,12 @@ async function main() {
                 description:
                   'Optional: Specific task ID to continue with. Use this when responding to the prompt asking which task to continue.',
               },
+              decision: {
+                type: 'string',
+                description:
+                  "Optional: How to handle an existing active task when starting chat. 'override' to start a new task even if one is active, 'followup' to continue the active task. Matches instant tool behavior.",
+                enum: ['override', 'followup'],
+              },
             },
             required: ['message'],
           },
