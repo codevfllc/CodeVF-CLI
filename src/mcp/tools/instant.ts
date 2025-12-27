@@ -3,10 +3,11 @@
  * Quick validation queries with single response
  */
 
-import { TasksApi } from '../../lib/api/tasks.js';
+import { TasksApi, CreateTaskResult } from '../../lib/api/tasks.js';
 import { ProjectsApi } from '../../lib/api/projects.js';
-import { logger } from '../../lib/utils/logger.js';
+import { ApiClient } from '../../lib/api/client.js';
 import axios from 'axios';
+import { checkForActiveTasks, analyzeTaskEscalation } from './task-checker.js';
 
 export interface FileAttachment {
   fileName: string;
@@ -19,6 +20,8 @@ export interface InstantToolArgs {
   maxCredits?: number;
   attachments?: FileAttachment[];
   assignmentTimeoutSeconds?: number;
+  continueTaskId?: string;
+  decision?: 'override' | 'followup';
 }
 
 export interface InstantToolResult {
@@ -29,11 +32,18 @@ export interface InstantToolResult {
 export class InstantTool {
   private tasksApi: TasksApi;
   private projectsApi: ProjectsApi;
+  private apiClient: ApiClient;
   private baseUrl: string;
 
-  constructor(tasksApi: TasksApi, projectsApi: ProjectsApi, baseUrl: string) {
+  constructor(
+    tasksApi: TasksApi,
+    projectsApi: ProjectsApi,
+    apiClient: ApiClient,
+    baseUrl: string
+  ) {
     this.tasksApi = tasksApi;
     this.projectsApi = projectsApi;
+    this.apiClient = apiClient;
     this.baseUrl = baseUrl;
   }
 
@@ -42,10 +52,293 @@ export class InstantTool {
    */
   async execute(args: InstantToolArgs): Promise<InstantToolResult> {
     try {
-      logger.info('Executing codevf-instant', {
+      console.log('Executing codevf-instant', {
         message: args.message,
-        attachmentCount: args.attachments?.length || 0
+        attachmentCount: args.attachments?.length || 0,
+        continueTaskId: args.continueTaskId,
+        decision: args.decision,
       });
+
+      // Get or create a project for this task
+      console.log('Getting or creating project for instant query');
+      const project = await this.projectsApi.getOrCreateDefault();
+      console.log('Using project', { projectId: project.id, repoUrl: project.repoUrl });
+
+      // Check for active tasks and ask user for preference
+      const taskCheck = await checkForActiveTasks(
+        this.tasksApi,
+        project.id.toString(),
+        args.continueTaskId,
+        'instant',
+        args.message
+      );
+
+      if (taskCheck.shouldPromptUser) {
+        const task = taskCheck.decision?.existingTask;
+        const options = taskCheck.decision?.options;
+        const agentInstruction = taskCheck.decision?.agentInstruction;
+
+        // If no decision was provided, ask the user
+        if (!args.decision) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    agentInstruction,
+                    activeTask: task,
+                    options: options,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+
+        // Handle the user's decision
+        console.log('Processing user decision', { decision: args.decision, taskId: task?.id });
+
+        switch (args.decision) {
+          case 'override':
+            console.log('User chose to override existing task');
+            // Close the old task before creating new one
+            if (task?.id) {
+              try {
+                console.log('Overriding existing task', { taskId: task.id });
+                await this.apiClient.request(`/api/cli/tasks/${task.id}/override`, {
+                  method: 'POST',
+                });
+                console.log('Task overridden successfully');
+              } catch (err) {
+                console.error('Failed to override task', err);
+              }
+            }
+            // Analyze escalation after override decision
+            console.log('Analyzing task escalation for override decision');
+            const escalationAnalysis = await analyzeTaskEscalation(
+              task?.id || '',
+              this.tasksApi,
+              project.id.toString(),
+              'instant'
+            );
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(
+                    {
+                      decision: 'override',
+                      escalationPrompt: escalationAnalysis.prompt,
+                      escalationReason: escalationAnalysis.reason,
+                      taskChain: escalationAnalysis.taskChain,
+                      escalationOptions: escalationAnalysis.options,
+                    },
+                    null,
+                    2
+                  ),
+                },
+              ],
+            };
+          case 'followup':
+            console.log('User chose to add as follow-up to existing task');
+            // Create a follow-up task linked to the existing task
+            if (task?.id) {
+              try {
+                console.log('Creating follow-up task', { parentTaskId: task.id });
+                const followupData = (await this.apiClient.post(`/api/cli/tasks/${task.id}/followup`, {
+                  message: args.message,
+                  projectId: project.id.toString(),
+                  maxCredits: args.maxCredits || 10,
+                  assignmentTimeoutSeconds: args.assignmentTimeoutSeconds,
+                })) as { success: boolean; data: CreateTaskResult };
+                console.log('Follow-up task created', {
+                  followUpTaskId: followupData.data.taskId,
+                });
+
+                // Analyze escalation after follow-up creation
+                console.log('Analyzing task escalation for follow-up task');
+                const escalationAnalysis = await analyzeTaskEscalation(
+                  followupData.data.taskId,
+                  this.tasksApi,
+                  project.id.toString(),
+                  'instant'
+                );
+
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: JSON.stringify(
+                        {
+                          decision: 'followup',
+                          newTaskId: followupData.data.taskId,
+                          escalationPrompt: escalationAnalysis.prompt,
+                          escalationReason: escalationAnalysis.reason,
+                          taskChain: escalationAnalysis.taskChain,
+                          escalationOptions: escalationAnalysis.options,
+                        },
+                        null,
+                        2
+                      ),
+                    },
+                  ],
+                };
+              } catch (err) {
+                console.error('Failed to create follow-up task', err);
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: `Error: Failed to create follow-up task: ${(err as Error).message}`,
+                    },
+                  ],
+                  isError: true,
+                };
+              }
+            }
+            break;
+        }
+      }
+
+      // If we have a task to resume, continue with it instead of creating a new one
+      if (!taskCheck.shouldPromptUser && taskCheck.taskToResumeId) {
+        // If a decision was provided with continueTaskId, handle it
+        if (args.decision) {
+          console.log('Processing decision with continued task', {
+            decision: args.decision,
+            taskId: taskCheck.taskToResumeId,
+          });
+
+          switch (args.decision) {
+            case 'followup':
+              console.log('User chose to add as follow-up to continued task');
+              try {
+                console.log('Creating follow-up task', {
+                  parentTaskId: taskCheck.taskToResumeId,
+                });
+                const followupData = (await this.apiClient.post(
+                  `/api/cli/tasks/${taskCheck.taskToResumeId}/followup`,
+                  {
+                    message: args.message,
+                    projectId: project.id.toString(),
+                    maxCredits: args.maxCredits || 10,
+                    assignmentTimeoutSeconds: args.assignmentTimeoutSeconds,
+                  }
+                )) as { success: boolean; data: CreateTaskResult };
+                console.log('Follow-up task created', {
+                  followUpTaskId: followupData.data.taskId,
+                });
+
+                // Analyze escalation after follow-up creation
+                console.log('Analyzing task escalation for follow-up task');
+                const escalationAnalysis = await analyzeTaskEscalation(
+                  followupData.data.taskId,
+                  this.tasksApi,
+                  project.id.toString(),
+                  'instant'
+                );
+
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: JSON.stringify(
+                        {
+                          decision: 'followup',
+                          newTaskId: followupData.data.taskId,
+                          escalationPrompt: escalationAnalysis.prompt,
+                          escalationReason: escalationAnalysis.reason,
+                          taskChain: escalationAnalysis.taskChain,
+                          escalationOptions: escalationAnalysis.options,
+                        },
+                        null,
+                        2
+                      ),
+                    },
+                  ],
+                };
+              } catch (err) {
+                console.error('Failed to create follow-up task', err);
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: `Error: Failed to create follow-up task: ${(err as Error).message}`,
+                    },
+                  ],
+                  isError: true,
+                };
+              }
+            case 'override':
+              console.log('User chose to override continued task');
+              try {
+                console.log('Overriding existing task', {
+                  taskId: taskCheck.taskToResumeId,
+                });
+                await this.apiClient.request(`/api/cli/tasks/${taskCheck.taskToResumeId}/override`, {
+                  method: 'POST',
+                });
+                console.log('Task overridden successfully');
+              } catch (err) {
+                console.error('Failed to override task', err);
+              }
+
+              // Analyze escalation after override decision
+              console.log('Analyzing task escalation for override decision');
+              const escalationAnalysis = await analyzeTaskEscalation(
+                taskCheck.taskToResumeId,
+                this.tasksApi,
+                project.id.toString(),
+                'instant'
+              );
+
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: JSON.stringify(
+                      {
+                        decision: 'override',
+                        escalationPrompt: escalationAnalysis.prompt,
+                        escalationReason: escalationAnalysis.reason,
+                        taskChain: escalationAnalysis.taskChain,
+                        escalationOptions: escalationAnalysis.options,
+                      },
+                      null,
+                      2
+                    ),
+                  },
+                ],
+              };
+          }
+        }
+
+        // No decision provided, just resume the task
+        console.log('Resuming existing task', { taskId: taskCheck.taskToResumeId });
+
+        console.log('Waiting for engineer response via polling...');
+
+        // Wait for response (5 min timeout)
+        const response = await this.tasksApi.waitForResponse(taskCheck.taskToResumeId, {
+          timeoutMs: 300000,
+          pollIntervalMs: 3000,
+        });
+
+        console.log('Response received', { taskId: taskCheck.taskToResumeId });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: response.text,
+            },
+          ],
+        };
+      }
 
       // Validate credits
       const maxCredits = args.maxCredits || 10;
@@ -145,11 +438,6 @@ export class InstantTool {
         }
       }
 
-      // Get or create a project for this task
-      logger.info('Getting or creating project for instant query');
-      const project = await this.projectsApi.getOrCreateDefault();
-      logger.info('Using project', { projectId: project.id, repoUrl: project.repoUrl });
-
       // Create task
       const task = await this.tasksApi.create({
         message: args.message,
@@ -159,17 +447,17 @@ export class InstantTool {
         assignmentTimeoutSeconds,
       });
 
-      logger.info('Task created', { taskId: task.taskId });
+      console.log('Task created', { taskId: task.taskId });
 
       // Upload attachments if provided
       if (args.attachments && args.attachments.length > 0) {
-        logger.info('Uploading attachments', { count: args.attachments.length });
+        console.log('Uploading attachments', { count: args.attachments.length });
 
         try {
           await this.uploadAttachments(task.taskId, args.attachments);
-          logger.info('All attachments uploaded successfully');
+          console.log('All attachments uploaded successfully');
         } catch (uploadError) {
-          logger.error('Failed to upload attachments', uploadError);
+          console.error('Failed to upload attachments', uploadError);
           return {
             content: [
               {
@@ -184,10 +472,10 @@ export class InstantTool {
 
       // Show warning if low balance
       if (task.warning) {
-        logger.warn('Credit warning', { warning: task.warning });
+        console.warn('Credit warning', { warning: task.warning });
       }
 
-      logger.info('Waiting for engineer response via polling...');
+      console.log('Waiting for engineer response via polling...');
 
       // Wait for response (5 min timeout)
       const response = await this.tasksApi.waitForResponse(task.taskId, {
@@ -196,7 +484,7 @@ export class InstantTool {
       });
 
       // Format response
-      const formattedResponse = this.formatResponse(response, task.warning, args.attachments?.length || 0);
+      const formattedResponse = this.formatResponse(response);
 
       return {
         content: [
@@ -207,7 +495,7 @@ export class InstantTool {
         ],
       };
     } catch (error) {
-      logger.error('codevf-instant failed', error);
+      console.error('codevf-instant failed', error);
 
       return {
         content: [
@@ -230,9 +518,9 @@ export class InstantTool {
 
     for (const attachment of attachments) {
       try {
-        logger.info('Uploading attachment', {
+        console.log('Uploading attachment', {
           fileName: attachment.fileName,
-          mimeType: attachment.mimeType
+          mimeType: attachment.mimeType,
         });
 
         const response = await axios.post(
@@ -244,7 +532,7 @@ export class InstantTool {
           },
           {
             headers: {
-              'Authorization': `Bearer ${authToken}`,
+              Authorization: `Bearer ${authToken}`,
               'Content-Type': 'application/json',
             },
           }
@@ -254,14 +542,14 @@ export class InstantTool {
           throw new Error(response.data.error || 'Upload failed');
         }
 
-        logger.info('Attachment uploaded successfully', {
+        console.log('Attachment uploaded successfully', {
           fileName: attachment.fileName,
-          size: response.data.data?.size || 0
+          size: response.data.data?.size || 0,
         });
       } catch (error) {
-        logger.error('Failed to upload attachment', {
+        console.error('Failed to upload attachment', {
           fileName: attachment.fileName,
-          error: (error as any).message
+          error: (error as any).message,
         });
         throw new Error(`Failed to upload ${attachment.fileName}: ${(error as any).message}`);
       }
@@ -271,25 +559,7 @@ export class InstantTool {
   /**
    * Format engineer response
    */
-  private formatResponse(
-    response: { text: string; creditsUsed: number; duration: string },
-    warning?: string,
-    attachmentCount: number = 0
-  ): string {
-    let output = 'Engineer Response:\n\n';
-    output += response.text + '\n\n';
-    output += '---\n';
-    output += `Credits used: ${response.creditsUsed}\n`;
-    output += `Session time: ${response.duration}\n`;
-
-    if (attachmentCount > 0) {
-      output += `Attachments shared: ${attachmentCount}\n`;
-    }
-
-    if (warning) {
-      output += `\n⚠️  ${warning}\n`;
-    }
-
-    return output;
+  private formatResponse(response: any): string {
+    return response;
   }
 }
