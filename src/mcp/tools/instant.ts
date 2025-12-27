@@ -559,7 +559,37 @@ export class InstantTool {
   /**
    * Format engineer response
    */
-  private formatResponse(response: any): string {
-    return response;
+  private formatResponse(
+    response:
+      | string
+      | {
+          text: string;
+          creditsUsed?: number;
+          duration?: number;
+          // Allow extra properties without losing type safety for known fields
+          [key: string]: unknown;
+        }
+  ): string {
+    // If the response is already a string, return it as-is
+    if (typeof response === 'string') {
+      return response;
+    }
+
+    // Base text is required on the structured response
+    let output = response.text ?? '';
+
+    const metaParts: string[] = [];
+    if (typeof response.creditsUsed === 'number') {
+      metaParts.push(`credits used: ${response.creditsUsed}`);
+    }
+    if (typeof response.duration === 'number') {
+      metaParts.push(`duration: ${response.duration}s`);
+    }
+
+    if (metaParts.length > 0) {
+      output += `\n\n(${metaParts.join(', ')})`;
+    }
+
+    return output;
   }
 }
