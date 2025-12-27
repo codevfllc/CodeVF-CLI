@@ -234,8 +234,6 @@ async function main() {
           },
         },
 
-
-
       ],
     };
   });
