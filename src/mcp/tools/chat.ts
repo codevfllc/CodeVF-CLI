@@ -7,6 +7,7 @@ import { TasksApi } from '../../lib/api/tasks.js';
 import { ProjectsApi } from '../../lib/api/projects.js';
 import { logger } from '../../lib/utils/logger.js';
 import axios from 'axios';
+import { checkForActiveTasks } from './task-checker.js';
 
 export interface FileAttachment {
   fileName: string;
@@ -19,6 +20,7 @@ export interface ChatToolArgs {
   maxCredits?: number;
   attachments?: FileAttachment[];
   assignmentTimeoutSeconds?: number;
+  continueTaskId?: string;
 }
 
 export interface ChatToolResult {
@@ -44,8 +46,64 @@ export class ChatTool {
     try {
       logger.info('Executing codevf-chat', {
         message: args.message,
-        attachmentCount: args.attachments?.length || 0
+        attachmentCount: args.attachments?.length || 0,
+        continueTaskId: args.continueTaskId,
       });
+
+      // Get or create a project for this task
+      logger.info('Getting or creating project for chat');
+      const project = await this.projectsApi.getOrCreateDefault();
+      logger.info('Using project', { projectId: project.id, repoUrl: project.repoUrl });
+
+      // Check for active tasks and ask user for preference
+      const taskCheck = await checkForActiveTasks(
+        this.tasksApi,
+        project.id.toString(),
+        args.continueTaskId,
+        'chat',
+        args.message
+      );
+
+      if (taskCheck.shouldPromptUser) {
+        const task = taskCheck.decision?.existingTask;
+        const options = taskCheck.decision?.options;
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                activeTask: task,
+                options: options,
+              }, null, 2),
+            },
+          ],
+        };
+      }
+
+      // If we have a task to resume, continue with it instead of creating a new one
+      if (taskCheck.taskToResumeId) {
+        logger.info('Resuming existing task', { taskId: taskCheck.taskToResumeId });
+
+        logger.info('Waiting for engineer response via polling...');
+
+        // Wait for response (120 min timeout for chat)
+        const response = await this.tasksApi.waitForResponse(taskCheck.taskToResumeId, {
+          timeoutMs: 7200000,
+          pollIntervalMs: 3000,
+        });
+
+        logger.info('Response received', { taskId: taskCheck.taskToResumeId });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: response.text,
+            },
+          ],
+        };
+      }
 
       // Validate credits
       const maxCredits = args.maxCredits || 240;
@@ -144,11 +202,6 @@ export class ChatTool {
           }
         }
       }
-
-      // Get or create a project for this task
-      logger.info('Getting or creating project for chat session');
-      const project = await this.projectsApi.getOrCreateDefault();
-      logger.info('Using project', { projectId: project.id, repoUrl: project.repoUrl });
 
       // Create task
       logger.info('Chat tool creating task', { message: args.message, maxCredits });
@@ -251,7 +304,7 @@ export class ChatTool {
       try {
         logger.info('Uploading attachment', {
           fileName: attachment.fileName,
-          mimeType: attachment.mimeType
+          mimeType: attachment.mimeType,
         });
 
         const response = await axios.post(
@@ -263,7 +316,7 @@ export class ChatTool {
           },
           {
             headers: {
-              'Authorization': `Bearer ${authToken}`,
+              Authorization: `Bearer ${authToken}`,
               'Content-Type': 'application/json',
             },
           }
@@ -275,12 +328,12 @@ export class ChatTool {
 
         logger.info('Attachment uploaded successfully', {
           fileName: attachment.fileName,
-          size: response.data.data?.size || 0
+          size: response.data.data?.size || 0,
         });
       } catch (error) {
         logger.error('Failed to upload attachment', {
           fileName: attachment.fileName,
-          error: (error as any).message
+          error: (error as any).message,
         });
         throw new Error(`Failed to upload ${attachment.fileName}: ${(error as any).message}`);
       }
@@ -290,29 +343,14 @@ export class ChatTool {
   /**
    * Format chat session info
    */
-  private formatResponse(
-    task: {
-      actionId: number;
-      creditsRemaining: number;
-      warning?: string;
-    },
-    maxCredits: number
-  ): string {
-    const sessionUrl = `${this.baseUrl}/session/${task.actionId}`;
-
-    let output = 'Chat session started with engineer.\n\n';
-    output += `Session URL: ${sessionUrl}\n\n`;
-    output += 'Share this link with your user to monitor the conversation.\n\n';
-    output += `Max credits: ${maxCredits}\n`;
-    output += `Rate: 2 credits/minute\n`;
-    output += `Estimated duration: ${Math.floor(maxCredits / 2)} minutes\n`;
-
-    if (task.warning) {
-      output += `\n⚠️  ${task.warning}\n`;
-    }
-
-    output += `\nCredits remaining: ${task.creditsRemaining}\n`;
-
-    return output;
+  private formatResponse(response: any): ChatToolResult {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: response,
+        },
+      ],
+    };
   }
 }

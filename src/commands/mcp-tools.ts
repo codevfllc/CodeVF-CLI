@@ -79,13 +79,13 @@ export async function handleCvfInstant(message?: string): Promise<void> {
     const tokenManager = new TokenManager(configManager);
     const apiClient = new ApiClient(config.baseUrl, tokenManager);
     const defaultProjectId = config.defaults?.projectId || '1';
-    
+
     logger.info('handleCvfInstant config:', {
       baseUrl: config.baseUrl,
       defaults: config.defaults,
       defaultProjectId,
     });
-    
+
     const tasksApi = new TasksApi(apiClient, config.baseUrl, defaultProjectId);
 
     console.log(chalk.cyan('  [→] Creating instant query...'));
@@ -120,7 +120,6 @@ export async function handleCvfInstant(message?: string): Promise<void> {
     console.log(chalk.dim(`  Credits used: ${response.creditsUsed}`));
     console.log(chalk.dim(`  Session time: ${response.duration}`));
     console.log();
-
   } catch (error: any) {
     console.log(chalk.red(`  [✗] Error: ${error.message || error}`));
     logger.error('cvf-instant failed', error);
@@ -182,6 +181,7 @@ export async function handleCvfChat(message?: string): Promise<void> {
     const task = await tasksApi.create({
       message: finalMessage!,
       taskMode: 'realtime_chat',
+      status: 'requested',
       maxCredits,
       projectId: defaultProjectId,
     });
@@ -207,7 +207,6 @@ export async function handleCvfChat(message?: string): Promise<void> {
     console.log();
     console.log(chalk.white('  Open the URL above to monitor the conversation.'));
     console.log();
-
   } catch (error: any) {
     console.log(chalk.red(`  [✗] Error: ${error.message || error}`));
     logger.error('cvf-chat failed', error);
@@ -245,7 +244,8 @@ export async function handleCvf(message?: string): Promise<void> {
         value: 'instant',
       },
       {
-        title: chalk.blue('💬 Chat') + chalk.dim(' - Extended session (4-1920 credits, up to 16 hours)'),
+        title:
+          chalk.blue('💬 Chat') + chalk.dim(' - Extended session (4-1920 credits, up to 16 hours)'),
         value: 'chat',
       },
       {

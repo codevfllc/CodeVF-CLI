@@ -37,11 +37,13 @@
   "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "@inkjs/ui": "^1.0.0",
+    "@inquirer/prompts": "^8.1.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@opencode-ai/sdk": "*",
     "archiver": "^6.0.1",
     "axios": "^1.6.7",
     "chalk": "^5.3.0",
+    "cli-spinners": "^3.3.0",
     "date-fns": "^3.3.1",
     "dotenv": "^16.4.1",
     "ignore": "^5.3.0",
