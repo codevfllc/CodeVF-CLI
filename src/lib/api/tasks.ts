@@ -104,6 +104,22 @@ export class TasksApi {
   }
 
   /**
+   * Get active or requesting tasks (not completed)
+   */
+  async getActiveTasks(projectId?: string): Promise<any[]> {
+    logger.debug('Getting active tasks', { projectId });
+    const response = await this.client.post('/api/cli/tasks/active', {
+      projectId: projectId || this.defaultProjectId,
+    });
+
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to get active tasks');
+    }
+
+    return response.data || [];
+  }
+
+  /**
    * Get task status
    */
   async getStatus(taskId: string): Promise<any> {
@@ -112,6 +128,27 @@ export class TasksApi {
 
     if (!response.success) {
       throw new Error(response.error || 'Failed to get task status');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Get parent task chain up to 4 levels deep
+   */
+  async getParentTaskChain(projectId: string, taskId?: string): Promise<{
+    taskId: string | null;
+    hasParent: boolean;
+    parentChain: Array<{ taskId: string; mode: string; status: string; message: string }>;
+  }> {
+    logger.debug('Getting parent task chain', { projectId, taskId });
+    const response = await this.client.post('/api/cli/tasks/parents', {
+      projectId: projectId || this.defaultProjectId,
+      taskId: taskId,
+    });
+
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to get parent task chain');
     }
 
     return response.data;

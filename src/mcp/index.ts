@@ -51,7 +51,7 @@ async function main() {
   const defaultProjectId = config.defaults?.projectId || '1';
   const tasksApi = new TasksApi(apiClient, config.baseUrl, defaultProjectId);
   const projectsApi = new ProjectsApi(apiClient);
-  const instantTool = new InstantTool(tasksApi, projectsApi, config.baseUrl);
+  const instantTool = new InstantTool(tasksApi, projectsApi, apiClient, config.baseUrl);
   const chatTool = new ChatTool(tasksApi, projectsApi, config.baseUrl);
   const listenTool = new ListenTool(tasksApi, config.baseUrl);
   const tunnelTool = new TunnelTool();
@@ -76,7 +76,7 @@ async function main() {
         {
           name: 'codevf-instant',
           description:
-            'Get quick validation from human engineer. Use for: testing if fix works, identifying errors, quick questions. Returns single response from engineer.',
+            'Get quick validation from human engineer. Use for: testing if fix works, identifying errors, quick questions. Returns single response from engineer. If active task exists, offers you the choice to continue or start new.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -86,13 +86,15 @@ async function main() {
               },
               maxCredits: {
                 type: 'number',
-                description: 'Maximum credits to spend (1-10, default: 10). Rate: 1 credit/minute. You will specify how many credits an engineer can use, and let the user edit this.',
+                description:
+                  'Maximum credits to spend (1-10, default: 10). Rate: 1 credit/minute. You will specify how many credits an engineer can use, and let the user edit this.',
                 default: 10,
                 minimum: 1,
               },
               attachments: {
                 type: 'array',
-                description: 'Optional file attachments (screenshots, logs, design files, etc.). Maximum 5 files.',
+                description:
+                  'Optional file attachments (screenshots, logs, design files, etc.). Maximum 5 files.',
                 items: {
                   type: 'object',
                   properties: {
@@ -102,7 +104,8 @@ async function main() {
                     },
                     content: {
                       type: 'string',
-                      description: 'File content: base64 encoded for images/PDFs, raw text for text files',
+                      description:
+                        'File content: base64 encoded for images/PDFs, raw text for text files',
                     },
                     mimeType: {
                       type: 'string',
@@ -115,10 +118,22 @@ async function main() {
               },
               assignmentTimeoutSeconds: {
                 type: 'number',
-                description: 'Engineer assignment timeout in seconds (30-1800, default: 300 for Claude agent). Time engineer has to accept before moving to next engineer.',
+                description:
+                  'Engineer assignment timeout in seconds (30-1800, default: 300 for Claude agent). Time engineer has to accept before moving to next engineer.',
                 default: 300,
                 minimum: 30,
                 maximum: 1800,
+              },
+              continueTaskId: {
+                type: 'string',
+                description:
+                  'Optional: Specific task ID to continue with. Use this when responding to the prompt asking which task to continue.',
+              },
+              decision: {
+                type: 'string',
+                enum: ['override', 'followup'],
+                description:
+                  'Optional: Decision for handling active task. Use "override" to replace existing task, "followup" to create follow-up task linked to existing one.',
               },
             },
             required: ['message', 'maxCredits'],
@@ -127,7 +142,7 @@ async function main() {
         {
           name: 'codevf-chat',
           description:
-            'Start extended debugging session with human engineer (4-1920 credits). Use for: complex bugs, multi-step debugging, architecture questions. Returns session URL for monitoring.',
+            'Start extended debugging session with human engineer (4-1920 credits). Use for: complex bugs, multi-step debugging, architecture questions. If active task exists, offers you the choice to continue or start new.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -145,7 +160,8 @@ async function main() {
               },
               attachments: {
                 type: 'array',
-                description: 'Optional file attachments (screenshots, logs, design files, etc.). Maximum 5 files.',
+                description:
+                  'Optional file attachments (screenshots, logs, design files, etc.). Maximum 5 files.',
                 items: {
                   type: 'object',
                   properties: {
@@ -155,7 +171,8 @@ async function main() {
                     },
                     content: {
                       type: 'string',
-                      description: 'File content: base64 encoded for images/PDFs, raw text for text files',
+                      description:
+                        'File content: base64 encoded for images/PDFs, raw text for text files',
                     },
                     mimeType: {
                       type: 'string',
@@ -168,10 +185,22 @@ async function main() {
               },
               assignmentTimeoutSeconds: {
                 type: 'number',
-                description: 'Engineer assignment timeout in seconds (30-1800, default: 300 for Claude agent). Time engineer has to accept before moving to next engineer.',
+                description:
+                  'Engineer assignment timeout in seconds (30-1800, default: 300 for Claude agent). Time engineer has to accept before moving to next engineer.',
                 default: 300,
                 minimum: 30,
                 maximum: 1800,
+              },
+              continueTaskId: {
+                type: 'string',
+                description:
+                  'Optional: Specific task ID to continue with. Use this when responding to the prompt asking which task to continue.',
+              },
+              decision: {
+                type: 'string',
+                description:
+                  "Optional: How to handle an existing active task when starting chat. 'override' to start a new task even if one is active, 'followup' to continue the active task. Matches instant tool behavior.",
+                enum: ['override', 'followup'],
               },
             },
             required: ['message'],
@@ -192,16 +221,19 @@ async function main() {
               },
               subdomain: {
                 type: 'string',
-                description: 'Optional subdomain for the tunnel URL (e.g., "myapp" -> https://myapp.loca.lt)',
+                description:
+                  'Optional subdomain for the tunnel URL (e.g., "myapp" -> https://myapp.loca.lt)',
               },
               reason: {
                 type: 'string',
-                description: 'Optional description of why tunnel is needed (e.g., "Testing OAuth callback")',
+                description:
+                  'Optional description of why tunnel is needed (e.g., "Testing OAuth callback")',
               },
             },
             required: ['port'],
           },
         },
+
       ],
     };
   });
@@ -216,11 +248,9 @@ async function main() {
         case 'codevf-instant':
           result = await instantTool.execute(args as any);
           break;
-
         case 'codevf-chat':
           result = await chatTool.execute(args as any);
           break;
-
         case 'codevf-listen':
           result = await listenTool.execute(args as any);
           break;

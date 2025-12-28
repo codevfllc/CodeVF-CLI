@@ -21,9 +21,7 @@ export class TokenManager {
     const config = this.configManager.load();
 
     if (!config.auth) {
-      throw new AuthenticationError(
-        'Not authenticated. Run: codevf setup'
-      );
+      throw new AuthenticationError('Not authenticated. Run: codevf setup');
     }
 
     // Check if token expires soon
@@ -48,15 +46,17 @@ export class TokenManager {
   async refresh(): Promise<void> {
     const config = this.configManager.load();
 
-    if (!config.auth?.refreshToken) {
-      throw new AuthenticationError('No refresh token available');
+    if (!config.auth?.accessToken) {
+      throw new AuthenticationError('No access token available');
     }
 
     try {
       const response = await fetch(`${config.baseUrl}/api/cli/auth/refresh`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: config.auth.refreshToken }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${config.auth.accessToken}`,
+        },
       });
 
       if (!response.ok) {
@@ -65,30 +65,29 @@ export class TokenManager {
 
       const data = (await response.json()) as {
         success: boolean;
-        data?: {
-          accessToken: string;
-          refreshToken: string;
-          expiresAt: string;
-        };
+        token?: string;
+        expiresIn?: number;
       };
 
-      if (!data.success || !data.data) {
+      if (!data.success || !data.token) {
         throw new Error('Invalid refresh response');
       }
 
+      // Calculate new expiration time
+      const expiresAt = new Date();
+      expiresAt.setSeconds(expiresAt.getSeconds() + (data.expiresIn || 86400));
+
       this.configManager.updateAuth({
-        accessToken: data.data.accessToken,
-        refreshToken: data.data.refreshToken,
-        expiresAt: data.data.expiresAt,
+        accessToken: data.token,
+        refreshToken: config.auth.refreshToken,
+        expiresAt: expiresAt.toISOString(),
         userId: config.auth.userId,
       });
 
       logger.info('Token refreshed successfully');
     } catch (error) {
       logger.error('Token refresh failed', error);
-      throw new AuthenticationError(
-        `Token refresh failed. Please re-authenticate: codevf setup`
-      );
+      throw new AuthenticationError(`Token refresh failed. Please re-authenticate: codevf setup`);
     }
   }
 
