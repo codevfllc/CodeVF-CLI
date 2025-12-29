@@ -91,4 +91,11 @@ export class ApiClient {
       body: body ? JSON.stringify(body) : undefined,
     });
   }
+
+  /**
+   * Get authentication token (for WebSocket connections)
+   */
+  async getToken(): Promise<string> {
+    return await this.tokenManager.getValidToken();
+  }
 }

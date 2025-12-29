@@ -17,6 +17,7 @@ export interface CreateTaskOptions {
   contextData?: any;
   initiatedBy?: string;
   assignmentTimeoutSeconds?: number;
+  parentActionId?: string;
 }
 
 export interface CreateTaskResult {
@@ -76,6 +77,7 @@ export class TasksApi {
       initiatedBy: options.initiatedBy || 'ai_tool',
       autoApproveCommands: false,
       assignmentTimeoutSeconds: options.assignmentTimeoutSeconds, // Always send if provided
+      parentActionId: options.parentActionId ? parseInt(options.parentActionId) : undefined,
     });
 
     if (!response.success || !response.data) {

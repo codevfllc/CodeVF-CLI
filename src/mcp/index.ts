@@ -14,6 +14,7 @@ import { TokenManager } from '../lib/auth/token-manager.js';
 import { ApiClient } from '../lib/api/client.js';
 import { TasksApi } from '../lib/api/tasks.js';
 import { ProjectsApi } from '../lib/api/projects.js';
+import { SessionsApi } from '../lib/api/sessions.js';
 import { InstantTool } from './tools/instant.js';
 import { ChatTool } from './tools/chat.js';
 import { ListenTool } from './tools/listen.js';
@@ -51,8 +52,9 @@ async function main() {
   const defaultProjectId = config.defaults?.projectId || '1';
   const tasksApi = new TasksApi(apiClient, config.baseUrl, defaultProjectId);
   const projectsApi = new ProjectsApi(apiClient);
+  const sessionsApi = new SessionsApi(apiClient, config.baseUrl);
   const instantTool = new InstantTool(tasksApi, projectsApi, apiClient, config.baseUrl);
-  const chatTool = new ChatTool(tasksApi, projectsApi, config.baseUrl);
+  const chatTool = new ChatTool(tasksApi, projectsApi, apiClient, sessionsApi, config.baseUrl);
   const listenTool = new ListenTool(tasksApi, config.baseUrl);
   const tunnelTool = new TunnelTool();
 
@@ -199,8 +201,14 @@ async function main() {
               decision: {
                 type: 'string',
                 description:
-                  "Optional: How to handle an existing active task when starting chat. 'override' to start a new task even if one is active, 'followup' to continue the active task. Matches instant tool behavior.",
-                enum: ['override', 'followup'],
+                  "Optional: How to handle an existing active task when starting chat. 'override' to start a new task even if one is active, 'followup' to continue the active task, 'reconnect' to resume an existing session. Matches instant tool behavior.",
+                enum: ['override', 'followup', 'reconnect'],
+              },
+              previouslyConnected: {
+                type: 'boolean',
+                description:
+                  'Set to true if reconnecting to an existing session to skip greeting message',
+                default: false,
               },
             },
             required: ['message'],

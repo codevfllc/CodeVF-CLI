@@ -22,7 +22,7 @@ export interface TaskCheckResult {
       content: string;
     };
     options: Array<{
-      action: 'override' | 'followup';
+      action: 'override' | 'followup' | 'reconnect';
       description: string;
     }>;
   };
@@ -64,7 +64,7 @@ export async function checkForActiveTasks(
       const mostRecentTask = activeTasks[0];
       console.error('Found active task, returning shouldPromptUser=true');
 
-      const agentInstructionText = `Ask the user which option they prefer for handling the existing active task. Present both options clearly and wait for their choice before proceeding.\n\nTo proceed, call this tool again with one of these parameters:\n  - decision="override" (replace task #${mostRecentTask.taskId})\n  - decision="followup" (continue task #${mostRecentTask.taskId})`;
+      const agentInstructionText = `Ask the user which option they prefer for handling the existing active task. Present all options clearly and wait for their choice before proceeding.\n\nTo proceed, call this tool again with continueTaskId="${mostRecentTask.taskId}" and one of these parameters:\n  - decision="reconnect" (reconnect to task #${mostRecentTask.taskId} without sending new message)\n  - decision="followup" (continue task #${mostRecentTask.taskId} with new message)\n  - decision="override" (replace task #${mostRecentTask.taskId} with new task)`;
 
       return {
         shouldPromptUser: true,
@@ -83,12 +83,16 @@ export async function checkForActiveTasks(
           },
           options: [
             {
-              action: 'override',
-              description: `Replace task #${mostRecentTask.taskId} with new task (closes #${mostRecentTask.taskId})`,
+              action: 'reconnect',
+              description: `Reconnect to task #${mostRecentTask.taskId} (just listen, don't send new message)`,
             },
             {
               action: 'followup',
-              description: `Add as follow-up to task #${mostRecentTask.taskId} (keeps #${mostRecentTask.taskId} active)`,
+              description: `Add as follow-up to task #${mostRecentTask.taskId} (sends your new message)`,
+            },
+            {
+              action: 'override',
+              description: `Replace task #${mostRecentTask.taskId} with new task (closes #${mostRecentTask.taskId})`,
             },
           ],
         },
