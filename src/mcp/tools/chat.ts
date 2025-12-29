@@ -45,6 +45,7 @@ export class ChatTool {
   private wsConnection: WebSocket | null = null;
   private messageBuffer: Array<{ sender: string; content: string; timestamp: string }> = [];
   private responseResolver: ((value: string) => void) | null = null;
+  private responseRejecter: ((reason: Error) => void) | null = null;
   private currentTaskId: string | null = null;
   private hasConnected: boolean = false;
 
@@ -696,13 +697,15 @@ export class ChatTool {
    */
   private async waitForEngineerResponse(timeoutMs: number): Promise<string> {
     return new Promise((resolve, reject) => {
-      // Set up resolver
+      // Set up resolver and rejecter
       this.responseResolver = resolve;
+      this.responseRejecter = reject;
 
       // Set timeout
       const timeout = setTimeout(() => {
         if (this.responseResolver) {
           this.responseResolver = null;
+          this.responseRejecter = null;
           reject(new Error('Timeout waiting for engineer response'));
         }
       }, timeoutMs);
@@ -711,6 +714,7 @@ export class ChatTool {
       const originalResolver = this.responseResolver;
       this.responseResolver = (value: string) => {
         clearTimeout(timeout);
+        this.responseRejecter = null;
         originalResolver(value);
       };
     });
@@ -720,12 +724,20 @@ export class ChatTool {
    * Disconnect from WebSocket
    */
   disconnect(): void {
+    // Reject any pending response promise before cleanup
+    if (this.responseRejecter) {
+      const rejecter = this.responseRejecter;
+      this.responseResolver = null;
+      this.responseRejecter = null;
+      logger.warn('Rejecting pending response promise due to disconnect');
+      rejecter(new Error('WebSocket connection closed during response wait'));
+    }
+
     if (this.wsConnection) {
       this.wsConnection.close();
       this.wsConnection = null;
     }
     this.messageBuffer = [];
-    this.responseResolver = null;
     this.currentTaskId = null;
   }
 }
