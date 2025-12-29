@@ -151,6 +151,17 @@ export class ChatTool {
                 logger.info('Chat task overridden successfully');
               } catch (err) {
                 logger.error('Failed to override chat task', err);
+                // Do not proceed to create a new task if override fails; surface the issue to the user.
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text:
+                        'Failed to override the existing chat session. A new task was not created. ' +
+                        'Please try again or choose a different option.',
+                    },
+                  ],
+                };
               }
             }
             // Continue to create new task
