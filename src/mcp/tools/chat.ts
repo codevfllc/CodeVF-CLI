@@ -33,6 +33,9 @@ export interface ChatToolResult {
   isError?: boolean;
 }
 
+// Timeout constants
+const ENGINEER_RESPONSE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
 export class ChatTool {
   private tasksApi: TasksApi;
   private projectsApi: ProjectsApi;
@@ -204,7 +207,7 @@ export class ChatTool {
         logger.info('Waiting for engineer response via WebSocket...');
 
         // Wait for engineer to respond (30 min timeout)
-        const engineerResponse = await this.waitForEngineerResponse(1800000);
+        const engineerResponse = await this.waitForEngineerResponse(ENGINEER_RESPONSE_TIMEOUT_MS);
 
         logger.info('Engineer response received', { taskId: taskCheck.taskToResumeId });
 
@@ -391,7 +394,7 @@ export class ChatTool {
       logger.info('Waiting for engineer response...');
 
       // Wait for engineer response via WebSocket (30 minute timeout)
-      const engineerResponse = await this.waitForEngineerResponse(30 * 60 * 1000);
+      const engineerResponse = await this.waitForEngineerResponse(ENGINEER_RESPONSE_TIMEOUT_MS);
 
       logger.info('Engineer response received');
 
