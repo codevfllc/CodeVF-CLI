@@ -204,7 +204,7 @@ async function main() {
                   "Optional: How to handle an existing active task when starting chat. 'override' to start a new task even if one is active, 'followup' to continue the active task. Matches instant tool behavior.",
                 enum: ['override', 'followup'],
               },
-              previously_connected: {
+              previouslyConnected: {
                 type: 'boolean',
                 description:
                   'Set to true if reconnecting to an existing session to skip greeting message',

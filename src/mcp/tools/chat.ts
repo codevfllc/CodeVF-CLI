@@ -25,7 +25,7 @@ export interface ChatToolArgs {
   assignmentTimeoutSeconds?: number;
   continueTaskId?: string;
   decision?: 'reconnect' | 'followup' | 'override';
-  previously_connected?: boolean;
+  previouslyConnected?: boolean;
 }
 
 export interface ChatToolResult {
@@ -165,8 +165,8 @@ export class ChatTool {
       if (taskCheck.taskToResumeId) {
         logger.info('Resuming existing task', { taskId: taskCheck.taskToResumeId });
 
-        // Set hasConnected based on previously_connected parameter
-        if (args.previously_connected) {
+        // Set hasConnected based on previouslyConnected parameter
+        if (args.previouslyConnected) {
           this.hasConnected = true;
           logger.info('Skipping greeting - previously connected to this session');
         }
