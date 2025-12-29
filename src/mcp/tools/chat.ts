@@ -625,6 +625,13 @@ export class ChatTool {
         taskId,
         preview: content.substring(0, 50),
       });
+    } else {
+      logger.warn('Failed to send WebSocket message: connection is not open', {
+        taskId,
+        hasConnection: !!this.wsConnection,
+        readyState: this.wsConnection?.readyState,
+        preview: content.substring(0, 50),
+      });
     }
   }
 
