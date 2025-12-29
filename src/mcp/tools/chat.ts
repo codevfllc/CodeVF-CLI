@@ -25,7 +25,7 @@ export interface ChatToolArgs {
   assignmentTimeoutSeconds?: number;
   continueTaskId?: string;
   decision?: 'reconnect' | 'followup' | 'override';
-  previously_connected?: boolean;
+  previouslyConnected?: boolean;
 }
 
 export interface ChatToolResult {
