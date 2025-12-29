@@ -506,11 +506,25 @@ export class ChatTool {
       // Pass token as protocol (second parameter), not in headers
       this.wsConnection = new WebSocket(connectionUrl, token);
 
-      // Setup event handlers
-      this.wsConnection.on('open', () => {
-        logger.info('Claude connected to chat session', { taskId });
+      // Wait for the WebSocket connection to be established before returning
+      await new Promise<void>((resolve, reject) => {
+        if (!this.wsConnection) {
+          reject(new Error('WebSocket connection was not created'));
+          return;
+        }
+
+        this.wsConnection.once('open', () => {
+          logger.info('Claude connected to chat session', { taskId });
+          resolve();
+        });
+
+        this.wsConnection.once('error', (error) => {
+          logger.error('WebSocket connection error during initial connection', error);
+          reject(error);
+        });
       });
 
+      // Setup event handlers for the established connection
       this.wsConnection.on('message', (data: WebSocket.Data) => {
         try {
           const message = JSON.parse(data.toString());
