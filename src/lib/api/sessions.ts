@@ -2,7 +2,7 @@
  * Session API - Chat session management
  */
 
-import { ApiClient, ApiResponse } from './client.js';
+import { ApiClient } from './client.js';
 import { logger } from '../utils/logger.js';
 
 export interface SessionMessage {
