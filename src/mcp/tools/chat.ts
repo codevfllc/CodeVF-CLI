@@ -173,6 +173,17 @@ export class ChatTool {
                 logger.info('Chat task overridden successfully');
               } catch (err) {
                 logger.error('Failed to override chat task', err);
+                // Do not proceed to create a new task if override fails; surface the issue to the user.
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text:
+                        'Failed to override the existing chat session. A new task was not created. ' +
+                        'Please try again or choose a different option.',
+                    },
+                  ],
+                };
               }
             }
             // Continue to create new task
@@ -211,18 +222,17 @@ export class ChatTool {
           logger.warn('Failed to fetch parent task chain', err);
         }
 
-        // If there's a message, send it first
-        if (args.message) {
-          logger.info('Sending message to existing session', { taskId: taskCheck.taskToResumeId });
-          this.sendWebSocketMessage(args.message, taskCheck.taskToResumeId);
-        }
-
         // Reconnect to WebSocket if not already connected
         if (!this.wsConnection || this.currentTaskId !== taskCheck.taskToResumeId) {
           logger.info('Reconnecting to WebSocket session');
           await this.connectToSession(taskCheck.taskToResumeId);
         }
 
+        // If there's a message, send it after ensuring the WebSocket is connected
+        if (args.message) {
+          logger.info('Sending message to existing session', { taskId: taskCheck.taskToResumeId });
+          this.sendWebSocketMessage(args.message, taskCheck.taskToResumeId);
+        }
         logger.info('Waiting for engineer response via WebSocket...');
 
         // Wait for engineer to respond (30 min timeout)
@@ -528,11 +538,25 @@ export class ChatTool {
       // Pass token as protocol (second parameter), not in headers
       this.wsConnection = new WebSocket(connectionUrl, token);
 
-      // Setup event handlers
-      this.wsConnection.on('open', () => {
-        logger.info('Claude connected to chat session', { taskId });
+      // Wait for the WebSocket connection to be established before returning
+      await new Promise<void>((resolve, reject) => {
+        if (!this.wsConnection) {
+          reject(new Error('WebSocket connection was not created'));
+          return;
+        }
+
+        this.wsConnection.once('open', () => {
+          logger.info('Claude connected to chat session', { taskId });
+          resolve();
+        });
+
+        this.wsConnection.once('error', (error) => {
+          logger.error('WebSocket connection error during initial connection', error);
+          reject(error);
+        });
       });
 
+      // Setup event handlers for the established connection
       this.wsConnection.on('message', (data: WebSocket.Data) => {
         try {
           const message = JSON.parse(data.toString());
@@ -631,6 +655,13 @@ export class ChatTool {
       );
       logger.info('Claude sent message via WebSocket', {
         taskId,
+        preview: content.substring(0, 50),
+      });
+    } else {
+      logger.warn('Failed to send WebSocket message: connection is not open', {
+        taskId,
+        hasConnection: !!this.wsConnection,
+        readyState: this.wsConnection?.readyState,
         preview: content.substring(0, 50),
       });
     }

@@ -201,8 +201,8 @@ async function main() {
               decision: {
                 type: 'string',
                 description:
-                  "Optional: How to handle an existing active task when starting chat. 'override' to start a new task even if one is active, 'followup' to continue the active task. Matches instant tool behavior.",
-                enum: ['override', 'followup'],
+                  "Optional: How to handle an existing active task when starting chat. 'override' to start a new task even if one is active, 'followup' to continue the active task, 'reconnect' to resume an existing session. Matches instant tool behavior.",
+                enum: ['override', 'followup', 'reconnect'],
               },
               previouslyConnected: {
                 type: 'boolean',
