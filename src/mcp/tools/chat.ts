@@ -200,18 +200,17 @@ export class ChatTool {
           logger.warn('Failed to fetch parent task chain', err);
         }
 
-        // If there's a message, send it first
-        if (args.message) {
-          logger.info('Sending message to existing session', { taskId: taskCheck.taskToResumeId });
-          this.sendWebSocketMessage(args.message, taskCheck.taskToResumeId);
-        }
-
         // Reconnect to WebSocket if not already connected
         if (!this.wsConnection || this.currentTaskId !== taskCheck.taskToResumeId) {
           logger.info('Reconnecting to WebSocket session');
           await this.connectToSession(taskCheck.taskToResumeId);
         }
 
+        // If there's a message, send it after ensuring the WebSocket is connected
+        if (args.message) {
+          logger.info('Sending message to existing session', { taskId: taskCheck.taskToResumeId });
+          this.sendWebSocketMessage(args.message, taskCheck.taskToResumeId);
+        }
         logger.info('Waiting for engineer response via WebSocket...');
 
         // Wait for engineer to respond (30 min timeout)
