@@ -28,10 +28,12 @@ export class TokenManager {
     const expiresAt = new Date(config.auth.expiresAt);
     const now = new Date();
     const timeUntilExpiry = expiresAt.getTime() - now.getTime();
+    const isExpiryInvalid = Number.isNaN(timeUntilExpiry);
 
-    if (timeUntilExpiry < this.refreshThresholdMs) {
+    if (isExpiryInvalid || timeUntilExpiry < this.refreshThresholdMs) {
       logger.info('Token expiring soon, refreshing...', {
         expiresAt: config.auth.expiresAt,
+        isExpiryInvalid,
       });
       await this.refresh();
       return this.configManager.load().auth!.accessToken;
@@ -46,8 +48,8 @@ export class TokenManager {
   async refresh(): Promise<void> {
     const config = this.configManager.load();
 
-    if (!config.auth?.accessToken) {
-      throw new AuthenticationError('No access token available');
+    if (!config.auth?.refreshToken) {
+      throw new AuthenticationError('No refresh token available');
     }
 
     try {
@@ -55,8 +57,9 @@ export class TokenManager {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${config.auth.accessToken}`,
+          Authorization: `Bearer ${config.auth.refreshToken}`,
         },
+        body: JSON.stringify({ refreshToken: config.auth.refreshToken }),
       });
 
       if (!response.ok) {
@@ -66,20 +69,26 @@ export class TokenManager {
       const data = (await response.json()) as {
         success: boolean;
         token?: string;
+        accessToken?: string;
+        refreshToken?: string;
         expiresIn?: number;
+        expiresAt?: string;
       };
 
-      if (!data.success || !data.token) {
+      const nextAccessToken = data.accessToken || data.token;
+      if (!data.success || !nextAccessToken) {
         throw new Error('Invalid refresh response');
       }
 
       // Calculate new expiration time
-      const expiresAt = new Date();
-      expiresAt.setSeconds(expiresAt.getSeconds() + (data.expiresIn || 86400));
+      const expiresAt = data.expiresAt ? new Date(data.expiresAt) : new Date();
+      if (!data.expiresAt) {
+        expiresAt.setSeconds(expiresAt.getSeconds() + (data.expiresIn || 86400));
+      }
 
       this.configManager.updateAuth({
-        accessToken: data.token,
-        refreshToken: config.auth.refreshToken,
+        accessToken: nextAccessToken,
+        refreshToken: data.refreshToken || config.auth.refreshToken,
         expiresAt: expiresAt.toISOString(),
         userId: config.auth.userId,
       });
