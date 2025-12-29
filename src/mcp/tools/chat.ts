@@ -36,6 +36,24 @@ export interface ChatToolResult {
 // Timeout constants
 const ENGINEER_RESPONSE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
+/**
+ * IMPORTANT: This class is NOT thread-safe for concurrent executions.
+ * 
+ * The class uses shared instance variables (wsConnection, messageBuffer, 
+ * responseResolver, currentTaskId, hasConnected) that will conflict if 
+ * multiple tool executions happen concurrently.
+ * 
+ * Current behavior: Only ONE active chat session per ChatTool instance.
+ * - Subsequent calls will disconnect any existing session
+ * - Message buffers and response handlers will be overwritten
+ * 
+ * This is acceptable for MCP tools as they typically execute sequentially,
+ * but be aware that calling execute() while another execution is in progress
+ * will terminate the previous session.
+ * 
+ * Future improvement: Move wsConnection, messageBuffer, etc. into a per-execution
+ * context object to support concurrent sessions.
+ */
 export class ChatTool {
   private tasksApi: TasksApi;
   private projectsApi: ProjectsApi;
