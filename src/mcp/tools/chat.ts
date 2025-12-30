@@ -770,6 +770,35 @@ export class ChatTool {
   }
 
   /**
+   * Send disconnect notification to engineer and close WebSocket
+   */
+  async notifyDisconnect(): Promise<void> {
+    if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+      try {
+        logger.info('Sending disconnect notification to engineer', { taskId: this.currentTaskId });
+        
+        // Send explicit disconnect notification
+        this.wsConnection.send(
+          JSON.stringify({
+            type: 'end_session',
+            timestamp: new Date().toISOString(),
+            payload: {
+              endedBy: 'customer',
+              reason: 'Customer closed Claude Code session',
+            },
+          })
+        );
+
+        // Wait a moment for message to send before closing
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        logger.info('Disconnect notification sent');
+      } catch (error) {
+        logger.error('Failed to send disconnect notification', error);
+      }
+    }
+  }
+
+  /**
    * Disconnect from WebSocket
    */
   disconnect(): void {

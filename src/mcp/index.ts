@@ -303,6 +303,14 @@ async function main() {
   // Handle shutdown
   process.on('SIGINT', async () => {
     logger.info('Shutting down...');
+    
+    // Notify engineer about disconnect before closing
+    try {
+      await chatTool.notifyDisconnect();
+    } catch (error) {
+      logger.error('Error sending disconnect notification', error);
+    }
+    
     await tunnelTool.closeAll();
     await server.close();
     process.exit(0);
