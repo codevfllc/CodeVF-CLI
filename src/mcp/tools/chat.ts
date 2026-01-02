@@ -794,7 +794,13 @@ export class ChatTool {
         logger.info('Disconnect notification sent');
       } catch (error) {
         logger.error('Failed to send disconnect notification', error);
+      } finally {
+        // Ensure WebSocket connection and related state are properly cleaned up
+        this.disconnect();
       }
+    } else {
+      // Even if the WebSocket is not open, ensure we clean up local state
+      this.disconnect();
     }
   }
 
