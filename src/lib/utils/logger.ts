@@ -1,5 +1,8 @@
 /**
  * Simple structured logger for CodeVF
+ * 
+ * CRITICAL: When running as an MCP server, all logs MUST go to stderr.
+ * stdout is reserved for JSON-RPC protocol messages only.
  */
 
 export enum LogLevel {
@@ -18,28 +21,30 @@ class Logger {
 
   debug(message: string, meta?: any) {
     if (this.level <= LogLevel.DEBUG) {
-      console.debug(`[DEBUG] ${message}`, meta ? JSON.stringify(meta) : '');
+      // Always write to stderr for MCP compatibility
+      process.stderr.write(`[DEBUG] ${message}${meta ? ' ' + JSON.stringify(meta) : ''}\n`);
     }
   }
 
   info(message: string, meta?: any) {
     if (this.level <= LogLevel.INFO) {
-      console.info(`[INFO] ${message}`, meta ? JSON.stringify(meta) : '');
+      // Always write to stderr for MCP compatibility
+      process.stderr.write(`[INFO] ${message}${meta ? ' ' + JSON.stringify(meta) : ''}\n`);
     }
   }
 
   warn(message: string, meta?: any) {
     if (this.level <= LogLevel.WARN) {
-      console.warn(`[WARN] ${message}`, meta ? JSON.stringify(meta) : '');
+      // Always write to stderr for MCP compatibility
+      process.stderr.write(`[WARN] ${message}${meta ? ' ' + JSON.stringify(meta) : ''}\n`);
     }
   }
 
   error(message: string, error?: Error | any) {
     if (this.level <= LogLevel.ERROR) {
-      console.error(
-        `[ERROR] ${message}`,
-        error instanceof Error ? error.stack : JSON.stringify(error)
-      );
+      // Always write to stderr for MCP compatibility
+      const errorInfo = error instanceof Error ? error.stack : JSON.stringify(error);
+      process.stderr.write(`[ERROR] ${message}${errorInfo ? ' ' + errorInfo : ''}\n`);
     }
   }
 }
