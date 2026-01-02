@@ -778,19 +778,42 @@ export class ChatTool {
         logger.info('Sending disconnect notification to engineer', { taskId: this.currentTaskId });
         
         // Send explicit disconnect notification
-        this.wsConnection.send(
-          JSON.stringify({
-            type: 'end_session',
-            timestamp: new Date().toISOString(),
-            payload: {
-              endedBy: 'customer',
-              reason: 'Customer closed Claude Code session',
-            },
-          })
-        );
+        const payload = JSON.stringify({
+          type: 'end_session',
+          timestamp: new Date().toISOString(),
+          payload: {
+            endedBy: 'customer',
+            reason: 'Customer closed Claude Code session',
+          },
+        });
 
-        // Wait a moment for message to send before closing
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise<void>((resolve, reject) => {
+          let settled = false;
+
+          // Fallback timeout in case the send callback is never invoked
+          const timeoutId = setTimeout(() => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            logger.warn('Timed out waiting for WebSocket disconnect notification to be sent');
+            resolve();
+          }, 2000);
+
+          this.wsConnection!.send(payload, (err?: Error) => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            clearTimeout(timeoutId);
+            if (err) {
+              logger.error('Error sending disconnect notification over WebSocket', err);
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
+        });
         logger.info('Disconnect notification sent');
       } catch (error) {
         logger.error('Failed to send disconnect notification', error);
