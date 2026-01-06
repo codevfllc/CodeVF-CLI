@@ -11,6 +11,7 @@ import os from 'os';
 import { ConfigManager } from '../lib/config/manager.js';
 import { OAuthFlow } from '../lib/auth/oauth-flow.js';
 import { commandContent } from './cvf-command-content.js';
+import { chatCommandContent } from './cvf-chat-command-content.js';
 
 /**
  * Get Claude Code config path based on platform
@@ -36,6 +37,7 @@ function createCvfSlashCommand(): boolean {
     const homeDir = os.homedir();
     const commandsDir = path.join(homeDir, '.claude', 'commands');
     const cvfCommandPath = path.join(commandsDir, 'cvf.md');
+    const cvfChatCommandPath = path.join(commandsDir, 'cvf-chat.md');
 
     // Create commands directory if it doesn't exist
     if (!fs.existsSync(commandsDir)) {
@@ -45,11 +47,19 @@ function createCvfSlashCommand(): boolean {
     // Check if cvf.md already exists
     if (fs.existsSync(cvfCommandPath)) {
       console.log(chalk.green('✅ /cvf slash command already exists'));
+    } else {
+      fs.writeFileSync(cvfCommandPath, commandContent, { mode: 0o644 });
+      console.log(chalk.green('✅ Created /cvf slash command for Claude Code'));
+    }
+
+    // Check if cvf-chat.md already exists
+    if (fs.existsSync(cvfChatCommandPath)) {
+      console.log(chalk.green('✅ /cvf-chat slash command already exists'));
       return true;
     }
 
-    fs.writeFileSync(cvfCommandPath, commandContent, { mode: 0o644 });
-    console.log(chalk.green('✅ Created /cvf slash command for Claude Code'));
+    fs.writeFileSync(cvfChatCommandPath, chatCommandContent, { mode: 0o644 });
+    console.log(chalk.green('✅ Created /cvf-chat slash command for Claude Code'));
     return true;
   } catch (error) {
     console.log(chalk.yellow('⚠️  Could not create /cvf slash command:'), (error as Error).message);
