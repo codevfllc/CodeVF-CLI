@@ -10,8 +10,8 @@ import path from 'path';
 import os from 'os';
 import { ConfigManager } from '../lib/config/manager.js';
 import { OAuthFlow } from '../lib/auth/oauth-flow.js';
-import { commandContent } from './cvf-command-content.js';
-import { chatCommandContent } from './cvf-chat-command-content.js';
+import { commandContent } from './contents/cvf-command-content.js';
+import { chatCommandContent } from './contents/cvf-chat-command-content.js';
 
 /**
  * Get Claude Code config path based on platform
