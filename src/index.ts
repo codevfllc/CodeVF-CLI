@@ -16,6 +16,7 @@ import { fixCommand } from './commands/fix.js';
 import { tasksCommand } from './commands/tasks.js';
 import { chatCommand } from './commands/chat.js';
 import { listenCommand } from './commands/listen.js';
+import { startMcpHttp, startMcpStdio } from './commands/mcp.js';
 import { handleError } from './utils/errors.js';
 import { ConfigManager } from './modules/config.js';
 import { AiAgent } from './modules/aiAgent.js';
@@ -399,11 +400,47 @@ if (args.length === 0) {
         }
       }
     )
+    .command(
+      'mcp <mode>',
+      'Start the MCP server (stdio or HTTP)',
+      (yargs) => {
+        return yargs
+          .positional('mode', {
+            type: 'string',
+            choices: ['stdio', 'http'],
+            describe: 'MCP transport to serve',
+          })
+          .option('port', {
+            type: 'number',
+            default: 3333,
+            describe: 'Port for HTTP mode',
+          })
+          .option('host', {
+            type: 'string',
+            default: '127.0.0.1',
+            describe: 'Host to bind HTTP mode',
+          });
+      },
+      async (argv) => {
+        try {
+          if (argv.mode === 'http') {
+            await startMcpHttp({
+              host: argv.host as string,
+              port: argv.port as number,
+            });
+            return;
+          }
+          await startMcpStdio();
+        } catch (error) {
+          handleError(error);
+        }
+      }
+    )
     .demandCommand(
       1,
       chalk.yellow(
         SETUP_ONLY_MODE
-          ? 'Run "codevf setup" to configure Claude Code integration (other commands disabled).'
+          ? 'Run "codevf setup" or "codevf mcp <mode>" to start MCP (other commands disabled).'
           : 'Run a command, e.g., "codevf fix \\"need help with X\\""'
       )
     )

@@ -36,6 +36,11 @@ Configure MCP server integration with Claude Code:
 - Create `/cvf` slash command for Claude Code
 - Select default project for context
 
+### `codevf mcp stdio|http`
+Start the MCP server for non-Claude clients:
+- `codevf mcp stdio` - Launch MCP over stdio (command/args-based clients)
+- `codevf mcp http --port 3333` - Launch MCP over HTTP/SSE (shows endpoints)
+
 ### Claude Code Integration (After Setup)
 Once configured, use these tools directly in Claude Code:
 
