@@ -218,7 +218,6 @@ if (args.length === 0) {
       );
       process.exit(0);
     }
-    return;
   }
 
   // Check if this is the first run
