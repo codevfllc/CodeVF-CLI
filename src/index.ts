@@ -38,6 +38,9 @@ import {
 
 const args = hideBin(process.argv);
 const SETUP_ONLY_MODE = process.env.SETUP_ONLY_MODE !== 'false';
+const isNpxInvocation =
+  process.env.npm_config_user_agent?.includes('npx') ||
+  process.env.npm_execpath?.includes('npx');
 
 /**
  * Safely loads config without throwing errors
@@ -205,12 +208,17 @@ async function runInteractiveMode() {
  */
 if (args.length === 0) {
   if (SETUP_ONLY_MODE) {
-    console.log(
-      chalk.dim(
-        'CodeVF CLI is in beta. Run "codevf setup" to configure Claude Code integration.'
-      )
-    );
-    process.exit(0);
+    if (isNpxInvocation) {
+      setupCommand().catch(handleError);
+    } else {
+      console.log(
+        chalk.dim(
+          'CodeVF CLI is in beta. Run "codevf setup" to configure Claude Code integration.'
+        )
+      );
+      process.exit(0);
+    }
+    return;
   }
 
   // Check if this is the first run
