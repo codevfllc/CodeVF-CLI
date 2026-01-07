@@ -75,6 +75,9 @@ export class WebSocketClient extends EventEmitter {
             case 'engineer_connected':
               this.emit('engineer_connected');
               break;
+            case 'customer_console_logs':
+              this.emit('customer_console_logs', message.payload);
+              break;
             default:
               this.emit('message', message);
           }

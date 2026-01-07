@@ -16,6 +16,7 @@ import { fixCommand } from './commands/fix.js';
 import { tasksCommand } from './commands/tasks.js';
 import { chatCommand } from './commands/chat.js';
 import { listenCommand } from './commands/listen.js';
+import { watchLogsCommand } from './commands/watch-logs.js';
 import { startMcpHttp, startMcpStdio } from './commands/mcp.js';
 import { handleError } from './utils/errors.js';
 import { ConfigManager } from './modules/config.js';
@@ -339,6 +340,24 @@ if (args.length === 0) {
         async () => {
           try {
             await listenCommand();
+          } catch (error) {
+            handleError(error);
+          }
+        }
+      )
+      .command(
+        'watch-logs <task-id>',
+        'Watch logs.txt and stream updates to an active chat session',
+        (yargs) => {
+          return yargs.positional('task-id', {
+            type: 'string',
+            describe: 'Task ID to send log updates to',
+            demandOption: true,
+          });
+        },
+        async (argv) => {
+          try {
+            await watchLogsCommand(argv['task-id'] as string);
           } catch (error) {
             handleError(error);
           }
