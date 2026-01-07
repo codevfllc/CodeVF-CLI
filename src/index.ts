@@ -212,11 +212,11 @@ if (args.length === 0) {
     if (isNpxInvocation) {
       setupCommand().catch(handleError);
     } else {
-      console.log(
-        chalk.dim(
-          'CodeVF CLI is in beta. Run "codevf setup" to configure Claude Code integration.'
-        )
-      );
+      console.log(chalk.dim('CodeVF CLI is in beta.'));
+      console.log(chalk.dim('Available commands:'));
+      console.log(chalk.dim('  codevf setup'));
+      console.log(chalk.dim('  codevf mcp stdio'));
+      console.log(chalk.dim('  codevf mcp http --port 3333'));
       process.exit(0);
     }
   }
