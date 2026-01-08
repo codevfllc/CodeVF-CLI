@@ -28,13 +28,15 @@ export interface BillingUpdate {
 export class WebSocketClient extends EventEmitter {
   private ws: WebSocket | null = null;
   private url: string;
+  private token: string | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private isClosedManually = false;
 
-  constructor(url: string) {
+  constructor(url: string, token?: string) {
     super();
     this.url = url;
+    this.token = token || null;
   }
 
   /**
@@ -44,7 +46,7 @@ export class WebSocketClient extends EventEmitter {
     return new Promise((resolve, reject) => {
       logger.info('Connecting to WebSocket', { url: this.url });
 
-      this.ws = new WebSocket(this.url);
+      this.ws = new WebSocket(this.url, this.token ? [this.token] : undefined);
 
       this.ws.on('open', () => {
         logger.info('WebSocket connected');
