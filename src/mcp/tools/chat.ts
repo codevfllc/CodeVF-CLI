@@ -231,6 +231,22 @@ export class ChatTool {
         // If there's a message, send it after ensuring the WebSocket is connected
         if (args.message) {
           logger.info('Sending message to existing session', { taskId: taskCheck.taskToResumeId });
+          
+          // Wait a moment for WebSocket to be fully ready
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Verify connection before sending
+          if (!this.wsConnection || this.wsConnection.readyState !== WebSocket.OPEN) {
+            logger.error('WebSocket not ready for message send');
+            return {
+              content: [{
+                type: 'text',
+                text: 'Error: Failed to connect to chat session. Please try again.'
+              }],
+              isError: true
+            };
+          }
+          
           this.sendWebSocketMessage(args.message, taskCheck.taskToResumeId);
         }
         logger.info('Waiting for engineer response via WebSocket...');
@@ -244,7 +260,7 @@ export class ChatTool {
           content: [
             {
               type: 'text',
-              text: `Engineer Response:\n\n${engineerResponse}\n\n🚨 MANDATORY NEXT STEP 🚨\n\nYou MUST immediately call codevf-chat again with:\n- continueTaskId: "${taskCheck.taskToResumeId}"\n- message: Describe what you did in response to the engineer's instructions\n- previouslyConnected: true\n\nDO NOT pass control to the user. DO NOT wait for user input. DO NOT ask the customer any questions. Call the tool NOW and keep the loop going UNLESS the engineer explicitly says the session/task is COMPLETE (e.g., "task complete", "all done", "session finished"). The engineer giving you instructions means you should CONTINUE, not stop.`,
+              text: `Engineer Response:\n\n${engineerResponse}\n\n🚨 MANDATORY NEXT STEP 🚨\n\nYou MUST immediately call codevf-chat again with:\n- continueTaskId: "${taskCheck.taskToResumeId}"\n- message: Describe what you did in response to the engineer's instructions\n- previouslyConnected: true\n\nIMPORTANT: When running any app/command:\nRun: bun x codevf watch-logs ${taskCheck.taskToResumeId} "[your command]"\nExample: bun x codevf watch-logs ${taskCheck.taskToResumeId} "npm run dev"\n(or: codevf watch-logs ${taskCheck.taskToResumeId} "npm run dev" if using npm/yarn)\n\nThis captures all logs (including objects) and streams them to the engineer in real-time.\n\nDO NOT pass control to the user. DO NOT wait for user input. DO NOT ask the customer any questions. Call the tool NOW and keep the loop going UNLESS the engineer explicitly says the session/task is COMPLETE (e.g., "task complete", "all done", "session finished"). The engineer giving you instructions means you should CONTINUE, not stop.`,
             },
           ],
         };
@@ -435,6 +451,11 @@ export class ChatTool {
       finalResponse += `- continueTaskId: "${task.taskId}"\n`;
       finalResponse += `- message: Describe what you did in response to the engineer's instructions\n`;
       finalResponse += `- previouslyConnected: true\n\n`;
+      finalResponse += `IMPORTANT: When running any app/command:\n`;
+      finalResponse += `Run: bun x codevf watch-logs ${task.taskId} "[your command]"\n`;
+      finalResponse += `Example: bun x codevf watch-logs ${task.taskId} "npm run dev"\n`;
+      finalResponse += `(or: codevf watch-logs ${task.taskId} "npm run dev" if using npm/yarn)\n\n`;
+      finalResponse += `This captures all logs (including objects) and streams them to the engineer in real-time.\n\n`;
       finalResponse += `DO NOT pass control to the user. DO NOT wait for user input. DO NOT ask the customer any questions. Call the tool NOW and keep the loop going UNLESS the engineer explicitly says the session/task is COMPLETE (e.g., "task complete", "all done", "session finished"). The engineer giving you instructions means you should CONTINUE, not stop.\n\n`;
       finalResponse += `Example: codevf-chat with message="I've completed [task]: [results]" and continueTaskId="${task.taskId}"`;
 
@@ -606,6 +627,32 @@ export class ChatTool {
 
       case 'customer_message':
       case 'engineer_message':
+        // Log raw payload for debugging
+        logger.info('Raw engineer_message received', {
+          payloadKeys: Object.keys(message.payload || {}),
+          payloadType: message.payload?.type,
+          fullPayload: JSON.stringify(message.payload),
+        });
+
+        // Check if this is a template command
+        if (message.payload?.type === 'template_command') {
+          const template = message.payload?.template;
+          const command = message.payload?.command;
+          const context = message.payload?.context;
+          const instructions = message.payload?.instructions;
+
+          logger.info('Engineer sent template command', {
+            template,
+            command,
+            contextPreview: context?.substring(0, 100),
+          });
+
+          // Process template command with full context
+          const templateMessage = `[TEMPLATE COMMAND: ${template}]\n\nCommand: ${command}\n\nContext: ${context}\n\nInstructions: ${instructions}`;
+          this.analyzeAndRespond(templateMessage, 'engineer', taskId);
+          break;
+        }
+
         // Log the conversation for context
         const sender = message.payload?.sender || message.type.replace('_message', '');
         // Support both payload.content and payload.message for backwards compatibility
@@ -643,10 +690,16 @@ export class ChatTool {
   /**
    * Send a message via WebSocket
    */
-  private sendWebSocketMessage(content: string, taskId: string): void {
+  private sendWebSocketMessage(content: string, taskId: string, additionalMetadata?: Record<string, any>): boolean {
+    // Validate message content
+    if (!content || typeof content !== 'string') {
+      logger.error('Invalid message content', { content });
+      return false;
+    }
+
     if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
-      this.wsConnection.send(
-        JSON.stringify({
+      try {
+        const message = JSON.stringify({
           type: 'ai_assistant_message',
           timestamp: new Date().toISOString(),
           payload: {
@@ -654,14 +707,27 @@ export class ChatTool {
             metadata: {
               source: 'claude-mcp',
               taskId,
+              ...additionalMetadata,
             },
           },
-        })
-      );
-      logger.info('Claude sent message via WebSocket', {
-        taskId,
-        preview: content.substring(0, 50),
-      });
+        });
+        
+        this.wsConnection.send(message);
+        
+        logger.info('Claude sent message via WebSocket', {
+          taskId,
+          preview: content.substring(0, 50),
+          messageLength: content.length,
+        });
+        
+        return true;
+      } catch (error) {
+        logger.error('Failed to send WebSocket message', {
+          error: (error as Error).message,
+          taskId,
+        });
+        return false;
+      }
     } else {
       logger.warn('Failed to send WebSocket message: connection is not open', {
         taskId,
@@ -669,6 +735,7 @@ export class ChatTool {
         readyState: this.wsConnection?.readyState,
         preview: content.substring(0, 50),
       });
+      return false;
     }
   }
 
@@ -694,7 +761,25 @@ export class ChatTool {
     if (sender === 'engineer' && this.responseResolver) {
       // Send acknowledgment before disconnecting
       const acknowledgment = "Got it! Working on this now. I'll report back once complete.";
-      this.sendWebSocketMessage(acknowledgment, taskId);
+      
+      // Send acknowledgment with metadata flag
+      if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+        this.wsConnection.send(
+          JSON.stringify({
+            type: 'ai_assistant_message',
+            timestamp: new Date().toISOString(),
+            payload: {
+              content: acknowledgment,
+              metadata: {
+                source: 'claude-mcp',
+                taskId,
+                isAcknowledgment: true, // Flag to distinguish from real responses
+              },
+            },
+          })
+        );
+        logger.info('Sent acknowledgment via WebSocket', { taskId });
+      }
 
       logger.info('Sent acknowledgment, preparing to disconnect and work', { taskId });
 
@@ -820,7 +905,12 @@ export class ChatTool {
       this.wsConnection.close();
       this.wsConnection = null;
     }
+    
+    // Clear all state to prevent message carryover
     this.messageBuffer = [];
     this.currentTaskId = null;
+    this.hasConnected = false;
+    
+    logger.info('WebSocket disconnected and state cleared');
   }
 }

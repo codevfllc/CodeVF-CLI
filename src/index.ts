@@ -25,11 +25,7 @@ import React from 'react';
 import { render } from 'ink';
 import { CLI_VERSION, RoutingMode, AgentMode } from './modules/constants.js';
 import { InteractiveApp } from './ui/InteractiveApp.js';
-import {
-  renderHeader,
-  renderQuickCommands,
-  showModeSwitched,
-} from './ui/SessionUI.js';
+import { renderHeader, renderQuickCommands, showModeSwitched } from './ui/SessionUI.js';
 import {
   handleSlashCommand,
   isSlashCommand,
@@ -39,10 +35,10 @@ import {
 } from './modules/commandHandler.js';
 
 const args = hideBin(process.argv);
-const SETUP_ONLY_MODE = process.env.SETUP_ONLY_MODE !== 'false';
+// SETUP_ONLY_MODE is for pure npx invocation; allow all commands with bun x or installed locally
 const isNpxInvocation =
-  process.env.npm_config_user_agent?.includes('npx') ||
-  process.env.npm_execpath?.includes('npx');
+  process.env.npm_config_user_agent?.includes('npx') || process.env.npm_execpath?.includes('npx');
+const SETUP_ONLY_MODE = isNpxInvocation && process.env.SETUP_ONLY_MODE !== 'false';
 
 /**
  * Safely loads config without throwing errors
@@ -75,10 +71,7 @@ async function runInteractiveMode() {
       // Display the user's input inside a full-width highlight block, left-aligned
       const columns = process.stdout.columns || 80;
       const lines = message.split(/\r?\n/);
-      const contentWidth = Math.min(
-        Math.max(...lines.map((line) => line.length), 1),
-        columns - 6
-      );
+      const contentWidth = Math.min(Math.max(...lines.map((line) => line.length), 1), columns - 6);
 
       const horizontalPad = '  ';
       const totalWidth = Math.min(columns, contentWidth + horizontalPad.length * 2);
@@ -345,24 +338,7 @@ if (args.length === 0) {
           }
         }
       )
-      .command(
-        'watch-logs <task-id>',
-        'Watch logs.txt and stream updates to an active chat session',
-        (yargs) => {
-          return yargs.positional('task-id', {
-            type: 'string',
-            describe: 'Task ID to send log updates to',
-            demandOption: true,
-          });
-        },
-        async (argv) => {
-          try {
-            await watchLogsCommand(argv['task-id'] as string);
-          } catch (error) {
-            handleError(error);
-          }
-        }
-      )
+
       .command(
         'fix <issue>',
         'Start a live debugging session',
@@ -450,6 +426,24 @@ if (args.length === 0) {
             return;
           }
           await startMcpStdio();
+        } catch (error) {
+          handleError(error);
+        }
+      }
+    )
+    .command(
+      'watch-logs <task-id>',
+      'Watch logs.txt and stream updates to an active chat session',
+      (yargs) => {
+        return yargs.positional('task-id', {
+          type: 'string',
+          describe: 'Task ID to send log updates to',
+          demandOption: true,
+        });
+      },
+      async (argv) => {
+        try {
+          await watchLogsCommand(argv['task-id'] as string);
         } catch (error) {
           handleError(error);
         }
