@@ -28,10 +28,18 @@ export async function watchLogsCommand(taskId?: string): Promise<void> {
   const apiClient = new ApiClient(authManager);
   let wsClient: WebSocketClient | null = null;
 
-  // Connect to WebSocket
   try {
-    wsClient = new WebSocketClient(authManager);
-    await wsClient.connect(taskId);
+    const token = authManager.getAccessToken();
+    if (!token) {
+      console.log('Error: No authentication token found');
+      process.exit(1);
+    }
+
+    const baseUrl = process.env.CODEVF_API_URL || 'http://localhost:3000';
+    const wsUrl = `${baseUrl.replace(/^https?:/, 'ws:')}/ws?taskId=${taskId}&userType=customer`;
+
+    wsClient = new WebSocketClient(wsUrl, token);
+    await wsClient.connect();
   } catch (error) {
     console.error('Error connecting to WebSocket:', error);
     process.exit(1);
@@ -79,10 +87,7 @@ export async function watchLogsCommand(taskId?: string): Promise<void> {
   });
 }
 
-async function sendNewLogs(
-  state: FileWatchState,
-  wsClient: WebSocketClient | null
-): Promise<void> {
+async function sendNewLogs(state: FileWatchState, wsClient: WebSocketClient | null): Promise<void> {
   const logsPath = path.join(process.cwd(), 'logs.txt');
 
   if (!fs.existsSync(logsPath) || !wsClient) {
@@ -101,12 +106,10 @@ async function sendNewLogs(
       // Send via WebSocket
       wsClient.send({
         payload: newContent,
-        type: 'customer_console_logs'
+        type: 'customer_console_logs',
       });
 
-      console.log(
-        `Sent ${newContent.length} bytes of new logs to engineer`
-      );
+      console.log(`Sent ${newContent.length} bytes of new logs to engineer`);
     }
   } catch (error) {
     // Silently ignore file read errors (file might be in use)
