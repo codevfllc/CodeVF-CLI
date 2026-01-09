@@ -30,6 +30,30 @@ function getClaudeCodeConfigPath(): string | null {
 }
 
 /**
+ * Get Codex MCP config path
+ */
+function getCodexConfigPath(): string {
+  return path.join(os.homedir(), '.codex', 'config.toml');
+}
+
+/**
+ * Resolve installed MCP server path
+ */
+function getMcpServerPath(): string {
+  const codevfPath = process.argv[1]; // Path to codevf binary
+  let resolvedPath = codevfPath;
+  try {
+    // Follow npm/yarn/pnpm bin symlinks to the actual package entrypoint.
+    resolvedPath = fs.realpathSync(codevfPath);
+  } catch {
+    // Fall back to argv path if it cannot be resolved (e.g. permissions or missing file).
+  }
+
+  const packageDir = path.dirname(path.dirname(resolvedPath)); // Go up from dist/index.js
+  return path.join(packageDir, 'dist', 'mcp', 'index.js');
+}
+
+/**
  * Create /cvf slash command for Claude Code
  */
 function createCvfSlashCommand(): boolean {
@@ -63,6 +87,68 @@ function createCvfSlashCommand(): boolean {
     return true;
   } catch (error) {
     console.log(chalk.yellow('⚠️  Could not create /cvf slash command:'), (error as Error).message);
+    return false;
+  }
+}
+
+/**
+ * Auto-configure Codex with MCP server
+ */
+async function autoConfigureCodex(): Promise<boolean> {
+  console.log(chalk.bold('\n📋 Codex Configuration\n'));
+
+  const configPath = getCodexConfigPath();
+
+  const { shouldConfigure } = await prompts({
+    type: 'confirm',
+    name: 'shouldConfigure',
+    message: 'Configure Codex to use CodeVF MCP server?',
+    initial: true,
+  });
+
+  if (!shouldConfigure) {
+    console.log(chalk.dim('\n💡 To configure manually, add to ~/.codex/config.toml:'));
+    console.log(chalk.dim('   [mcp_servers.codevf]'));
+    console.log(chalk.dim('   command = "node"'));
+    console.log(chalk.dim('   args = ["<path>/dist/mcp/index.js"]'));
+    return false;
+  }
+
+  try {
+    const configDir = path.dirname(configPath);
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true, mode: 0o755 });
+    }
+
+    let configContent = '';
+    if (fs.existsSync(configPath)) {
+      configContent = fs.readFileSync(configPath, 'utf8');
+    }
+
+    const hasCodevf = /^\s*\[mcp_servers\.codevf\]\s*$/m.test(configContent);
+    if (hasCodevf) {
+      console.log(chalk.green('✅ CodeVF MCP server already configured for Codex!'));
+      return true;
+    }
+
+    const mcpServerPath = getMcpServerPath();
+    const block = [
+      '[mcp_servers.codevf]',
+      'command = "node"',
+      `args = ["${mcpServerPath}"]`,
+      '',
+    ].join('\n');
+
+    const nextContent =
+      configContent.trim().length === 0
+        ? `${block}\n`
+        : `${configContent.trimEnd()}\n\n${block}\n`;
+
+    fs.writeFileSync(configPath, nextContent, { mode: 0o600 });
+    console.log(chalk.green('✅ Codex configured successfully!'));
+    return true;
+  } catch (error) {
+    console.error(chalk.red('\n❌ Codex auto-config failed:'), (error as Error).message);
     return false;
   }
 }
@@ -118,10 +204,7 @@ async function autoConfigureClaudeCode(): Promise<boolean> {
       config = JSON.parse(content);
     }
 
-    // Get the installed codevf path
-    const codevfPath = process.argv[1]; // Path to codevf binary
-    const packageDir = path.dirname(path.dirname(codevfPath)); // Go up from dist/index.js
-    const mcpServerPath = path.join(packageDir, 'dist', 'mcp', 'index.js');
+    const mcpServerPath = getMcpServerPath();
 
     // Add or update codevf server
     if (!config.mcpServers) {
@@ -177,8 +260,9 @@ export async function setupCommand(): Promise<void> {
     });
 
     if (!reconfigure) {
-      // Just update Claude Code config
+      // Update client configs without re-authenticating
       await autoConfigureClaudeCode();
+      await autoConfigureCodex();
       console.log(chalk.green('\n🎉 Setup complete!\n'));
       return;
     }
@@ -353,21 +437,29 @@ export async function setupCommand(): Promise<void> {
     console.log(chalk.green('\n✅ Authentication complete!'));
     console.log(chalk.dim('Configuration saved to:'), mcpConfigManager.getPath());
 
-    // Configure Claude Code
-    const configured = await autoConfigureClaudeCode();
+    const configuredClaude = await autoConfigureClaudeCode();
+    const configuredCodex = await autoConfigureCodex();
 
     console.log(chalk.bold.green('\n🎉 Setup complete!\n'));
 
-    if (configured) {
+    if (configuredClaude || configuredCodex) {
       console.log(chalk.bold('Next steps:'));
-      console.log(chalk.dim('1. Restart Claude Code to load the MCP server'));
-      console.log(chalk.dim('2. Use the /cvf slash command in Claude Code:'));
-      console.log(chalk.dim('   Example: ') + chalk.white('/cvf Does this fix work?'));
-      console.log(chalk.dim('   Example: ') + chalk.white('/cvf Create tunnel to port 3000'));
-      console.log(chalk.dim('3. Or ask Claude to use MCP tools directly:'));
-      console.log(chalk.dim('   - codevf-instant: Quick validation (1-10 credits)'));
-      console.log(chalk.dim('   - codevf-chat: Extended debugging (2 credits/min)'));
-      console.log(chalk.dim('   - codevf-tunnel: Expose local dev server (free)\n'));
+
+      if (configuredClaude) {
+        console.log(chalk.dim('1. Restart Claude Code to load the MCP server'));
+        console.log(chalk.dim('2. Use the /cvf slash command in Claude Code:'));
+        console.log(chalk.dim('   Example: ') + chalk.white('/cvf Does this fix work?'));
+        console.log(chalk.dim('   Example: ') + chalk.white('/cvf Create tunnel to port 3000'));
+        console.log(chalk.dim('3. Or ask Claude to use MCP tools directly:'));
+        console.log(chalk.dim('   - codevf-instant: Quick validation (1-10 credits)'));
+        console.log(chalk.dim('   - codevf-chat: Extended debugging (2 credits/min)'));
+        console.log(chalk.dim('   - codevf-tunnel: Expose local dev server (free)\n'));
+      }
+
+      if (configuredCodex) {
+        console.log(chalk.dim('1. Restart Codex to load the MCP server'));
+        console.log(chalk.dim('2. Use /mcp in Codex to confirm CodeVF is connected\n'));
+      }
     }
   } catch (error) {
     spinner.fail('Setup failed');

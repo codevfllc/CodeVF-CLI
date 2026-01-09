@@ -47,13 +47,36 @@ export class OAuthFlow {
         throw new Error('Invalid init response');
       }
 
+      const baseOrigin = new URL(this.baseUrl).origin;
+      let authUrl = data.data.authUrl;
+
+      try {
+        const authOrigin = new URL(authUrl).origin;
+        const baseHost = new URL(this.baseUrl).hostname;
+        const isLocalBase = baseHost === 'localhost' || baseHost === '127.0.0.1';
+
+        if (isLocalBase && authOrigin !== baseOrigin) {
+          const authUrlParsed = new URL(authUrl);
+          authUrlParsed.protocol = new URL(this.baseUrl).protocol;
+          authUrlParsed.host = new URL(this.baseUrl).host;
+          authUrl = authUrlParsed.toString();
+
+          logger.warn('Auth URL host differs from base URL; using base URL for local auth', {
+            originalAuthUrl: data.data.authUrl,
+            authUrl,
+          });
+        }
+      } catch (error) {
+        logger.warn('Failed to normalize auth URL', error);
+      }
+
       logger.info('OAuth flow initiated', {
-        authUrl: data.data.authUrl,
+        authUrl,
       });
 
       return {
         pollToken: data.data.pollToken,
-        authUrl: data.data.authUrl,
+        authUrl,
       };
     } catch (error) {
       logger.error('OAuth init failed', error);
