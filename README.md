@@ -1,6 +1,7 @@
 # CodeVF CLI
 
 **⚠️ BETA:** Connect Claude Code to live human engineers for complex debugging.
+Default release is **setup-only mode** (MCP integration).
 
 ## Installation
 
@@ -8,24 +9,14 @@
 npm install -g codevf
 ```
 
-## Quick Start
+## Quick Start (MCP + Claude Code)
 
-The CodeVF CLI is currently in **setup-only mode** for connecting Claude Code to CodeVF's MCP server:
+The CLI currently ships in **setup-only mode** for Claude Code integration.
 
 ```bash
-# Setup MCP server integration with Claude Code
+# Run setup directly
 codevf setup
-
-# After setup, use Claude Code with /cvf commands:
-# /cvf Does this authentication fix prevent timing attacks?
-# /cvf Complex race condition in WebSocket reconnection needs debugging  
-# /cvf Create tunnel to my dev server on port 3000
 ```
-
-**Three tools available in Claude Code:**
-- `codevf-instant` - Quick validation queries (4-minute max)
-- `codevf-chat` - Extended debugging sessions (up to 2 hours) 
-- `codevf-tunnel` - Share local dev servers securely
 
 ## Commands
 
@@ -33,40 +24,21 @@ codevf setup
 Configure MCP server integration with Claude Code:
 - Authenticate with CodeVF using OAuth
 - Auto-configure Claude Code's `~/.claude.json` file
-- Create `/cvf` slash command for Claude Code
+- Create Claude Code slash commands for CodeVF
 - Select default project for context
 
-### `codevf mcp stdio|http`
+### `codevf mcp stdio`
 Start the MCP server for non-Claude clients:
 - `codevf mcp stdio` - Launch MCP over stdio (command/args-based clients)
+
+### `codevf mcp http --port 3333`
+Start the MCP server over HTTP/SSE for non-Claude clients:
 - `codevf mcp http --port 3333` - Launch MCP over HTTP/SSE (shows endpoints)
-
-### Claude Code Integration (After Setup)
-Once configured, use these tools directly in Claude Code:
-
-**`/cvf [message]` - Smart routing to appropriate tool**
-- Quick questions → `codevf-instant` (4min max, good for validation)
-- Complex debugging → `codevf-chat` (extended sessions up to 2 hours)
-- Local server access → `codevf-tunnel` (share dev servers securely)
-
-**Example usage:**
-```
-/cvf Does this authentication fix prevent timing attacks?
-/cvf Complex race condition in WebSocket reconnection needs debugging
-/cvf Create tunnel to my dev server on port 3000
-```
-
-### Other Commands (Disabled in Beta)
-The following commands exist but are **disabled** in beta mode:
-- `codevf login` - Direct CLI authentication (use `setup` instead)
-- `codevf init` - Project initialization (handled via MCP tools)
-- `codevf fix` - Direct CLI debugging sessions (use Claude Code instead)
-- `codevf sync` - Repository sync (handled via MCP tools)
 
 ## How It Works
 
 1. **Setup once** - Run `codevf setup` to configure Claude Code integration
-2. **Work in Claude Code** - Use `/cvf` commands to access human engineers
+2. **Work in Claude Code** - Access human engineers through the integration
 3. **Get matched with experts** - Ex-FAANG engineers with expertise in your stack
 4. **Context-aware handoff** - Engineers see your Claude conversation for faster resolution
 5. **Hybrid approach** - AI handles quick questions, humans tackle complex debugging
@@ -145,19 +117,6 @@ chmod +x claude.appimage
 ```
 
 **Note:** Claude Code requires an Anthropic account. Create one at [claude.ai](https://claude.ai) if needed.
-
-## Beta Status & Roadmap
-
-**Current Beta Features:**
-- ✅ MCP server integration with Claude Code
-- ✅ Three tools: instant, chat, tunnel  
-- ✅ OAuth authentication and project selection
-
-**Coming Soon:**
-- 🔄 Direct CLI debugging sessions (`codevf fix`)
-- 🔄 Project initialization (`codevf init`) 
-- 🔄 Repository sync (`codevf sync`)
-- 🔄 Standalone terminal UI
 
 ## Support
 
