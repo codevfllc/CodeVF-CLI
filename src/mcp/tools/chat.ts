@@ -26,6 +26,7 @@ export interface ChatToolArgs {
   continueTaskId?: string;
   decision?: 'reconnect' | 'followup' | 'override';
   previouslyConnected?: boolean;
+  tagId?: number; // Engineer expertise level: 1=Engineer (1.7x), 4=Vibe Coder (1.5x), 5=General Purpose (1.0x, default)
 }
 
 export interface ChatToolResult {
@@ -358,6 +359,7 @@ export class ChatTool {
         projectId: project.id.toString(),
         assignmentTimeoutSeconds,
         parentActionId: parentTaskId, // Link to parent task for reference chain
+        tagId: args.tagId, // Engineer expertise level (defaults to General Purpose if not specified)
       });
 
       logger.info('Chat task created', { taskId: task.taskId });

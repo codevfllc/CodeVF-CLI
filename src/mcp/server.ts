@@ -17,6 +17,22 @@ import { ListenTool } from './tools/listen.js';
 import { TunnelTool } from './tools/tunnel.js';
 import { logger } from '../lib/utils/logger.js';
 
+/**
+ * Shared schema for engineer expertise tag parameter
+ */
+const createTagIdSchema = (slaMultiplier: number, modeName: string) => ({
+  type: 'number' as const,
+  description:
+    'Optional: Engineer expertise level that affects final cost via multiplier. Available options:\n' +
+    '• 1 = Engineer (1.7x multiplier) - Expert-level engineering with deep technical knowledge. Best for: complex architecture, security-critical code, performance optimization, critical bugs.\n' +
+    '• 4 = Vibe Coder (1.5x multiplier) - Experienced developer with solid problem-solving. Best for: feature implementation, standard debugging, code reviews, refactoring.\n' +
+    '• 5 = General Purpose (1.0x multiplier, DEFAULT) - Standard development work. Best for: simple fixes, documentation, basic questions, general tasks.\n' +
+    `Cost formula: Final Credits = Base Credits × SLA Multiplier (${slaMultiplier}x for ${modeName}) × Tag Multiplier\n` +
+    `Example: 5 minutes with Engineer tag = 5 credits × ${slaMultiplier} (${modeName}) × 1.7 (engineer) = ${5 * slaMultiplier * 1.7} credits\n` +
+    'If not specified, defaults to General Purpose (1.0x, no additional cost).',
+  enum: [1, 4, 5],
+});
+
 export interface McpRuntime {
   server: Server;
   chatTool: ChatTool;
@@ -113,6 +129,7 @@ export async function createMcpServer(): Promise<McpRuntime> {
                 minimum: 30,
                 maximum: 1800,
               },
+              tagId: createTagIdSchema(2.0, 'instant'),
               continueTaskId: {
                 type: 'string',
                 description:
@@ -180,6 +197,7 @@ export async function createMcpServer(): Promise<McpRuntime> {
                 minimum: 30,
                 maximum: 1800,
               },
+              tagId: createTagIdSchema(2.0, 'chat'),
               continueTaskId: {
                 type: 'string',
                 description:

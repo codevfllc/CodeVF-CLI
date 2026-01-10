@@ -23,6 +23,7 @@ export interface InstantToolArgs {
   assignmentTimeoutSeconds?: number;
   continueTaskId?: string;
   decision?: 'override' | 'followup';
+  tagId?: number; // Engineer expertise level: 1=Engineer (1.7x), 4=Vibe Coder (1.5x), 5=General Purpose (1.0x, default)
 }
 
 export interface InstantToolResult {
@@ -298,6 +299,7 @@ export class InstantTool {
         maxCredits,
         projectId: project.id.toString(),
         assignmentTimeoutSeconds,
+        tagId: args.tagId, // Engineer expertise level (defaults to General Purpose if not specified)
       });
 
       logger.info('Task created', { taskId: task.taskId });

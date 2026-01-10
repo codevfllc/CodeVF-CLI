@@ -18,6 +18,7 @@ export interface CreateTaskOptions {
   initiatedBy?: string;
   assignmentTimeoutSeconds?: number;
   parentActionId?: string;
+  tagId?: number; // Engineer expertise tag (1=Engineer 1.7x, 4=Vibe Coder 1.5x, 5=General Purpose 1.0x)
 }
 
 export interface CreateTaskResult {
@@ -78,6 +79,7 @@ export class TasksApi {
       autoApproveCommands: false,
       assignmentTimeoutSeconds: options.assignmentTimeoutSeconds, // Always send if provided
       parentActionId: options.parentActionId ? parseInt(options.parentActionId) : undefined,
+      tagId: options.tagId, // Engineer expertise tag (defaults to General Purpose if not specified)
     });
 
     if (!response.success || !response.data) {
