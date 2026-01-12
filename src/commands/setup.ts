@@ -341,7 +341,7 @@ export async function setupCommand(): Promise<void> {
   const mcpConfigManager = new ConfigManager('mcp-config.json');
 
   // Check if already configured and reuse base URL if present
-  let baseUrl = process.env.CODEVF_API_URL || 'https://app.codevf.com';
+  let baseUrl = process.env.CODEVF_API_URL || 'https://codevf.com';
 
   if (mcpConfigManager.exists()) {
     const existingConfig = mcpConfigManager.load();
