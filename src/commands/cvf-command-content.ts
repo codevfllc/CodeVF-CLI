@@ -15,15 +15,6 @@ Please help me with the following question or task by consulting a CodeVF engine
 - \`codevf setup\` - Configure MCP server for Claude Code, Codex, and Gemini
 - \`codevf mcp stdio\` - Start MCP server over stdio
 - \`codevf mcp http --port 3333\` - Start MCP server over HTTP/SSE
-- \`codevf welcome\` - Show welcome/setup guide
-- \`codevf login\` - Authenticate with CodeVF (disabled in beta)
-- \`codevf logout\` - Clear local authentication (disabled in beta)
-- \`codevf init\` - Initialize CodeVF in a project (disabled in beta)
-- \`codevf sync\` - Sync local changes with CodeVF (disabled in beta)
-- \`codevf fix <issue>\` - Start live debugging session (disabled in beta)
-- \`codevf tasks\` - List open tasks (disabled in beta)
-- \`codevf cvf-chat [project-id]\` - Join live chat session (disabled in beta)
-- \`codevf cvf-listen\` - Monitor active chats (disabled in beta)
 
 **Instructions for Claude:**
 

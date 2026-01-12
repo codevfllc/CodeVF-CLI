@@ -30,11 +30,8 @@ npm run dev -- <command>
 ```
 src/
 ├── commands/       # CLI command implementations
-│   ├── login.ts
-│   ├── logout.ts
-│   ├── init.ts
-│   ├── sync.ts
-│   └── fix.ts
+│   ├── setup.ts
+│   └── mcp.ts
 ├── modules/        # Core business logic
 │   ├── auth.ts
 │   ├── config.ts

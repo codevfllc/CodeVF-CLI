@@ -32,7 +32,7 @@ Use `/mcp` in Codex to confirm CodeVF is connected.
 
 ## Commands
 
-### `codevf setup` (Beta - Primary Command)
+### `codevf setup`
 Configure MCP server integration with Claude Code, Codex, and Gemini:
 - Authenticate with CodeVF using OAuth
 - Auto-configure Claude Code's `~/.claude.json` file
