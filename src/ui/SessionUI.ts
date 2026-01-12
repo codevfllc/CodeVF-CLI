@@ -148,7 +148,12 @@ export function renderHelpMenu(): void {
   console.log();
 
   console.log(chalk.bold.magenta('  🛠️  Setup & Project:'));
-  console.log(chalk.white('    /setup') + chalk.dim('    ') + chalk.cyan('Set up Claude Code integration') + chalk.green(' (recommended)'));
+  console.log(
+    chalk.white('    /setup') +
+      chalk.dim('    ') +
+      chalk.cyan('Set up Claude Code, Codex, and Gemini integration') +
+      chalk.green(' (recommended)')
+  );
   console.log(chalk.white('    /init') + chalk.dim('     ') + chalk.yellow('Initialize CodeVF CLI') + chalk.dim(' (beta)'));
   console.log(chalk.white('    /shell') + chalk.dim('    ') + chalk.yellow('Enter local shell'));
   console.log();

@@ -1,6 +1,6 @@
 # CodeVF CLI
 
-Connect Claude Code or Codex to live human engineers.
+Connect Claude Code, Codex, or Gemini to live human engineers.
 
 ## Install
 
@@ -24,10 +24,16 @@ Use `/cvf` in Claude Code to force CodeVF.
 
 Use `/mcp` in Codex to confirm CodeVF is connected.
 
+## Quick Start (Gemini)
+
+1. `codevf setup`
+2. In Gemini, restart the client
+3. It works out of the box
+
 ## Commands
 
 ### `codevf setup` (Beta - Primary Command)
-Configure MCP server integration with Claude Code and Codex:
+Configure MCP server integration with Claude Code, Codex, and Gemini:
 - Authenticate with CodeVF using OAuth
 - Auto-configure Claude Code's `~/.claude.json` file
 - Create Claude Code slash commands for CodeVF

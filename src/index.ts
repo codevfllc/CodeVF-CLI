@@ -390,7 +390,7 @@ if (args.length === 0) {
   cli
     .command(
       'setup',
-      'Configure MCP server for Claude Code or Codex integration',
+      'Configure MCP server for Claude Code, Codex, or Gemini integration',
       () => {},
       async () => {
         try {

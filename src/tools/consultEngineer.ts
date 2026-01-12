@@ -2,6 +2,7 @@ import { AiTool, ToolResult } from '../types/index.js';
 import { ApiClient } from '../modules/api.js';
 import { AuthManager } from '../modules/auth.js';
 import { ConfigManager } from '../modules/config.js';
+import { pathToFileURL } from 'url';
 
 /**
  * ConsultEngineer Tool
@@ -134,6 +135,85 @@ export const consultEngineerTool: AiTool = {
     }
   },
 };
+
+function parseCliArgs(argv: string[]): {
+  question: string | null;
+  context: string;
+  urgency?: 'normal' | 'high';
+} {
+  const positional: string[] = [];
+  let context = '';
+  let urgency: 'normal' | 'high' | undefined;
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--context' || arg === '-c') {
+      context = argv[i + 1] || '';
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith('--context=')) {
+      context = arg.slice('--context='.length);
+      continue;
+    }
+    if (arg === '--urgency' || arg === '-u') {
+      const next = argv[i + 1];
+      if (next === 'normal' || next === 'high') {
+        urgency = next;
+        i += 1;
+      }
+      continue;
+    }
+    if (arg.startsWith('--urgency=')) {
+      const value = arg.slice('--urgency='.length);
+      if (value === 'normal' || value === 'high') {
+        urgency = value;
+      }
+      continue;
+    }
+    positional.push(arg);
+  }
+
+  const question = positional[0] || null;
+  if (!context) {
+    context = positional[1] || 'No additional context provided.';
+  }
+
+  return { question, context, urgency };
+}
+
+const isDirectRun = (() => {
+  if (!process.argv[1]) return false;
+  try {
+    return import.meta.url === pathToFileURL(process.argv[1]).href;
+  } catch {
+    return false;
+  }
+})();
+
+if (isDirectRun) {
+  (async () => {
+    const { question, context, urgency } = parseCliArgs(process.argv.slice(2));
+
+    if (!question) {
+      console.error('Usage: node consultEngineer.ts "question" [context]');
+      console.error('Options: --context "<context>" --urgency normal|high');
+      process.exit(1);
+    }
+
+    const result = await consultEngineerTool.execute({
+      question,
+      context,
+      urgency,
+    });
+
+    console.log(JSON.stringify(result, null, 2));
+    process.exit(result.success ? 0 : 1);
+  })().catch((error) => {
+    console.error(`Failed to consult engineer: ${error?.message || error}`);
+    process.exit(1);
+  });
+}
 
 /**
  * Poll for engineer response with timeout

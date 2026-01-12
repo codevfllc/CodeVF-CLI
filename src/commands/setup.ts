@@ -37,6 +37,28 @@ function getCodexConfigPath(): string {
 }
 
 /**
+ * Resolve Gemini CLI config path based on platform and existing files.
+ * Supports common locations used by gemini-cli and similar tools.
+ */
+function getGeminiConfigPath(): string {
+  const homeDir = os.homedir();
+  const platform = os.platform();
+  const candidates: string[] = [];
+
+  if (platform === 'win32') {
+    const appData = process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming');
+    candidates.push(path.join(appData, 'gemini-cli', 'config.json'));
+    candidates.push(path.join(homeDir, '.gemini', 'config.json'));
+  } else {
+    candidates.push(path.join(homeDir, '.config', 'gemini-cli', 'config.json'));
+    candidates.push(path.join(homeDir, '.config', 'gemini', 'config.json'));
+    candidates.push(path.join(homeDir, '.gemini', 'config.json'));
+  }
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) || candidates[0];
+}
+
+/**
  * Resolve installed MCP server path
  */
 function getMcpServerPath(): string {
@@ -154,6 +176,81 @@ async function autoConfigureCodex(): Promise<boolean> {
 }
 
 /**
+ * Auto-configure Gemini CLI with MCP server
+ */
+async function autoConfigureGemini(): Promise<boolean> {
+  console.log(chalk.bold('\n📋 Gemini Configuration\n'));
+
+  const configPath = getGeminiConfigPath();
+
+  const { shouldConfigure } = await prompts({
+    type: 'confirm',
+    name: 'shouldConfigure',
+    message: 'Configure Gemini to use CodeVF MCP server?',
+    initial: true,
+  });
+
+  if (!shouldConfigure) {
+    console.log(chalk.dim(`\n💡 To configure manually, add to ${configPath}:`));
+    console.log(chalk.dim('   {'));
+    console.log(chalk.dim('     "mcpServers": {'));
+    console.log(chalk.dim('       "codevf": {'));
+    console.log(chalk.dim('         "command": "node",'));
+    console.log(chalk.dim('         "args": ["<path>/dist/mcp/index.js"]'));
+    console.log(chalk.dim('       }'));
+    console.log(chalk.dim('     }'));
+    console.log(chalk.dim('   }'));
+    return false;
+  }
+
+  try {
+    // Backup existing config
+    if (fs.existsSync(configPath)) {
+      const backupPath = `${configPath}.backup`;
+      console.log(chalk.dim('\n📋 Backing up existing config...'));
+      fs.copyFileSync(configPath, backupPath);
+      console.log(chalk.dim(`   Backup: ${backupPath}`));
+    }
+
+    // Read or create config
+    let config: any = {};
+    if (fs.existsSync(configPath)) {
+      const content = fs.readFileSync(configPath, 'utf8');
+      config = JSON.parse(content);
+    }
+
+    const mcpServerPath = getMcpServerPath();
+    const mcpKey = config.mcpServers ? 'mcpServers' : config.mcp_servers ? 'mcp_servers' : 'mcpServers';
+
+    if (!config[mcpKey]) {
+      config[mcpKey] = {};
+    }
+
+    if (config[mcpKey].codevf) {
+      console.log(chalk.green('✅ CodeVF MCP server already configured for Gemini!'));
+      return true;
+    }
+
+    config[mcpKey].codevf = {
+      command: 'node',
+      args: [mcpServerPath],
+    };
+
+    const configDir = path.dirname(configPath);
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true, mode: 0o755 });
+    }
+
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { mode: 0o600 });
+    console.log(chalk.green('✅ Gemini configured successfully!'));
+    return true;
+  } catch (error) {
+    console.error(chalk.red('\n❌ Gemini auto-config failed:'), (error as Error).message);
+    return false;
+  }
+}
+
+/**
  * Auto-configure Claude Code with MCP server
  */
 async function autoConfigureClaudeCode(): Promise<boolean> {
@@ -234,7 +331,7 @@ async function autoConfigureClaudeCode(): Promise<boolean> {
 }
 
 /**
- * Setup command - configures MCP server for Claude Code
+ * Setup command - configures MCP server for Claude Code, Codex, and Gemini
  */
 export async function setupCommand(): Promise<void> {
   console.log(chalk.bold.blue('\n╔═══════════════════════════════════════╗'));
@@ -263,6 +360,7 @@ export async function setupCommand(): Promise<void> {
       // Update client configs without re-authenticating
       await autoConfigureClaudeCode();
       await autoConfigureCodex();
+      await autoConfigureGemini();
       console.log(chalk.green('\n🎉 Setup complete!\n'));
       return;
     }
@@ -439,10 +537,11 @@ export async function setupCommand(): Promise<void> {
 
     const configuredClaude = await autoConfigureClaudeCode();
     const configuredCodex = await autoConfigureCodex();
+    const configuredGemini = await autoConfigureGemini();
 
     console.log(chalk.bold.green('\n🎉 Setup complete!\n'));
 
-    if (configuredClaude || configuredCodex) {
+    if (configuredClaude || configuredCodex || configuredGemini) {
       console.log(chalk.bold('Next steps:'));
 
       if (configuredClaude) {
@@ -459,6 +558,11 @@ export async function setupCommand(): Promise<void> {
       if (configuredCodex) {
         console.log(chalk.dim('1. Restart Codex to load the MCP server'));
         console.log(chalk.dim('2. Use /mcp in Codex to confirm CodeVF is connected\n'));
+      }
+
+      if (configuredGemini) {
+        console.log(chalk.dim('1. Restart Gemini to load the MCP server'));
+        console.log(chalk.dim('2. Confirm CodeVF MCP tools are available\n'));
       }
     }
   } catch (error) {
