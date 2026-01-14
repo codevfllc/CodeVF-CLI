@@ -5,12 +5,15 @@
 import { TunnelManager } from '../../modules/tunnel.js';
 import { logger } from '../../lib/utils/logger.js';
 import { nanoid } from 'nanoid';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
-export interface TunnelArgs {
+export interface TunnelToolArgs {
   port: number;
   subdomain?: string;
   reason?: string;
 }
+
+export type TunnelToolResult = CallToolResult;
 
 export class TunnelTool {
   private tunnelManager: TunnelManager;
@@ -21,7 +24,7 @@ export class TunnelTool {
     this.activeTunnels = new Map();
   }
 
-  async execute(args: TunnelArgs) {
+  async execute(args: TunnelToolArgs): Promise<TunnelToolResult> {
     const { port, subdomain, reason } = args;
 
     try {
@@ -86,14 +89,15 @@ export class TunnelTool {
           },
         ],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to create tunnel', error);
+      const message = error instanceof Error ? error.message : String(error);
 
       return {
         content: [
           {
             type: 'text',
-            text: `❌ Failed to create tunnel: ${error.message}\n\nCommon issues:\n- Port ${port} may not be in use\n- Firewall blocking connections\n- Localtunnel service temporarily unavailable`,
+            text: `❌ Failed to create tunnel: ${message}\n\nCommon issues:\n- Port ${port} may not be in use\n- Firewall blocking connections\n- Localtunnel service temporarily unavailable`,
           },
         ],
         isError: true,

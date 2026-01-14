@@ -3,7 +3,11 @@
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  type CallToolResult,
+} from '@modelcontextprotocol/sdk/types.js';
 
 import { ConfigManager } from '../lib/config/manager.js';
 import { TokenManager } from '../lib/auth/token-manager.js';
@@ -15,6 +19,10 @@ import { InstantTool } from './tools/instant.js';
 import { ChatTool } from './tools/chat.js';
 import { ListenTool } from './tools/listen.js';
 import { TunnelTool } from './tools/tunnel.js';
+import type { InstantToolArgs } from './tools/instant.js';
+import type { ChatToolArgs } from './tools/chat.js';
+import type { ListenToolArgs } from './tools/listen.js';
+import type { TunnelToolArgs } from './tools/tunnel.js';
 import { logger } from '../lib/utils/logger.js';
 
 /**
@@ -254,19 +262,19 @@ export async function createMcpServer(): Promise<McpRuntime> {
     const { name, arguments: args } = request.params;
 
     try {
-      let result;
+      let result: CallToolResult;
       switch (name) {
         case 'codevf-instant':
-          result = await instantTool.execute(args as any);
+          result = await instantTool.execute((args ?? {}) as unknown as InstantToolArgs);
           break;
         case 'codevf-chat':
-          result = await chatTool.execute(args as any);
+          result = await chatTool.execute((args ?? {}) as unknown as ChatToolArgs);
           break;
         case 'codevf-listen':
-          result = await listenTool.execute(args as any);
+          result = await listenTool.execute((args ?? {}) as unknown as ListenToolArgs);
           break;
         case 'codevf-tunnel':
-          result = await tunnelTool.execute(args as any);
+          result = await tunnelTool.execute((args ?? {}) as unknown as TunnelToolArgs);
           break;
         default:
           result = {
@@ -280,7 +288,7 @@ export async function createMcpServer(): Promise<McpRuntime> {
           };
       }
 
-      return result as any;
+      return result;
     } catch (error) {
       logger.error('Tool execution error', error);
 
@@ -292,7 +300,7 @@ export async function createMcpServer(): Promise<McpRuntime> {
           },
         ],
         isError: true,
-      } as any;
+      };
     }
   });
 

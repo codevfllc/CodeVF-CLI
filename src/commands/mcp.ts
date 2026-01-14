@@ -6,9 +6,10 @@ import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import chalk from 'chalk';
-import { randomUUID } from 'crypto';
+import * as crypto from 'crypto';
 import type { AddressInfo } from 'net';
 import type { IncomingMessage, ServerResponse } from 'http';
+import { v4 as uuidv4 } from 'uuid';
 
 import { createMcpServer } from '../mcp/server.js';
 import { logger, LogLevel } from '../lib/utils/logger.js';
@@ -60,9 +61,14 @@ export async function startMcpHttp(options: McpHttpOptions): Promise<void> {
   const { host, port } = options;
   const { server, chatTool, tunnelTool } = await createMcpServer();
 
+  const sessionIdGenerator =
+    typeof crypto.randomUUID === 'function'
+      ? () => crypto.randomUUID()
+      : () => uuidv4();
+
   const app = createMcpExpressApp({ host });
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
+    sessionIdGenerator,
   });
 
   await server.connect(transport);

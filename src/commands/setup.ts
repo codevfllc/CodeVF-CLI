@@ -12,6 +12,22 @@ import { ConfigManager } from '../lib/config/manager.js';
 import { OAuthFlow } from '../lib/auth/oauth-flow.js';
 import { commandContent } from './cvf-command-content.js';
 import { chatCommandContent } from './cvf-chat-command-content.js';
+import { CLI_VERSION } from '../modules/constants.js';
+import { checkForUpdates } from '../utils/version-check.js';
+
+type McpServerConfig = {
+  command: string;
+  args: string[];
+};
+
+type ClaudeConfig = {
+  mcpServers?: Record<string, McpServerConfig>;
+};
+
+type GeminiConfig = {
+  mcpServers?: Record<string, McpServerConfig>;
+  mcp_servers?: Record<string, McpServerConfig>;
+};
 
 /**
  * Get Claude Code config path based on platform
@@ -37,8 +53,8 @@ function getCodexConfigPath(): string {
 }
 
 /**
- * Resolve Gemini CLI config path based on platform and existing files.
- * Supports common locations used by gemini-cli and similar tools.
+ * Resolve Gemini CLI settings path based on platform and existing files.
+ * Supports common locations used by gemini-cli and legacy config paths.
  */
 function getGeminiConfigPath(): string {
   const homeDir = os.homedir();
@@ -47,15 +63,22 @@ function getGeminiConfigPath(): string {
 
   if (platform === 'win32') {
     const appData = process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming');
+    candidates.push(path.join(homeDir, '.gemini', 'settings.json'));
+    candidates.push(path.join(appData, 'gemini-cli', 'settings.json'));
     candidates.push(path.join(appData, 'gemini-cli', 'config.json'));
     candidates.push(path.join(homeDir, '.gemini', 'config.json'));
   } else {
+    candidates.push(path.join(homeDir, '.gemini', 'settings.json'));
+    candidates.push(path.join(homeDir, '.config', 'gemini-cli', 'settings.json'));
+    candidates.push(path.join(homeDir, '.config', 'gemini', 'settings.json'));
     candidates.push(path.join(homeDir, '.config', 'gemini-cli', 'config.json'));
     candidates.push(path.join(homeDir, '.config', 'gemini', 'config.json'));
     candidates.push(path.join(homeDir, '.gemini', 'config.json'));
   }
 
-  return candidates.find((candidate) => fs.existsSync(candidate)) || candidates[0];
+  const settingsCandidates = candidates.filter((candidate) => candidate.endsWith('settings.json'));
+  const existingSettings = settingsCandidates.find((candidate) => fs.existsSync(candidate));
+  return existingSettings || settingsCandidates[0] || candidates[0];
 }
 
 /**
@@ -213,7 +236,7 @@ async function autoConfigureGemini(): Promise<boolean> {
     }
 
     // Read or create config
-    let config: any = {};
+    let config: GeminiConfig = {};
     if (fs.existsSync(configPath)) {
       const content = fs.readFileSync(configPath, 'utf8');
       config = JSON.parse(content);
@@ -295,7 +318,7 @@ async function autoConfigureClaudeCode(): Promise<boolean> {
     }
 
     // Read or create config
-    let config: any = {};
+    let config: ClaudeConfig = {};
     if (fs.existsSync(configPath)) {
       const content = fs.readFileSync(configPath, 'utf8');
       config = JSON.parse(content);
@@ -333,15 +356,32 @@ async function autoConfigureClaudeCode(): Promise<boolean> {
 /**
  * Setup command - configures MCP server for Claude Code, Codex, and Gemini
  */
-export async function setupCommand(): Promise<void> {
+export interface SetupCommandOptions {
+  baseUrl?: string;
+}
+
+export async function setupCommand(options: SetupCommandOptions = {}): Promise<void> {
   console.log(chalk.bold.blue('\n╔═══════════════════════════════════════╗'));
   console.log(chalk.bold.blue('║   CodeVF MCP Server Setup             ║'));
   console.log(chalk.bold.blue('╚═══════════════════════════════════════╝\n'));
 
+  const updateCheck = await checkForUpdates({ currentVersion: CLI_VERSION });
+  if (updateCheck?.isOutdated) {
+    console.log(
+      chalk.yellow(
+        `⚠️  Update available: ${updateCheck.currentVersion} → ${updateCheck.latestVersion}`
+      )
+    );
+    console.log(chalk.dim('   Run: npm install -g codevf@latest'));
+    console.log(chalk.dim('   Or: npx codevf@latest setup'));
+    console.log('');
+  }
+
   const mcpConfigManager = new ConfigManager('mcp-config.json');
 
   // Check if already configured and reuse base URL if present
-  let baseUrl = process.env.CODEVF_API_URL || 'https://codevf.com';
+  const baseUrlOverride = options.baseUrl?.trim();
+  let baseUrl = baseUrlOverride || process.env.CODEVF_API_URL || 'https://codevf.com';
 
   if (mcpConfigManager.exists()) {
     const existingConfig = mcpConfigManager.load();
@@ -366,7 +406,7 @@ export async function setupCommand(): Promise<void> {
     }
 
     // Reuse existing base URL when reconfiguring (unless env override)
-    if (!process.env.CODEVF_API_URL && existingConfig.baseUrl) {
+    if (!baseUrlOverride && !process.env.CODEVF_API_URL && existingConfig.baseUrl) {
       baseUrl = existingConfig.baseUrl;
     }
   }
@@ -470,7 +510,7 @@ export async function setupCommand(): Promise<void> {
       } else {
         spinner.warn('Could not connect to CodeVF servers');
 
-        const { offlineChoice } = await prompts({
+        await prompts({
           type: 'select',
           name: 'offlineChoice',
           message: 'Unable to fetch projects. How would you like to proceed?',
@@ -495,7 +535,7 @@ export async function setupCommand(): Promise<void> {
       spinner.warn('Connection error while loading projects');
       console.log(chalk.dim(`   Error: ${(error as Error).message}`));
 
-      const { errorChoice } = await prompts({
+      await prompts({
         type: 'select',
         name: 'errorChoice',
         message: 'Unable to connect to CodeVF. How would you like to proceed?',

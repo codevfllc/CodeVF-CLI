@@ -19,33 +19,45 @@ class Logger {
     this.level = level;
   }
 
-  debug(message: string, meta?: any) {
+  debug(message: string, meta?: unknown) {
     if (this.level <= LogLevel.DEBUG) {
       // Always write to stderr for MCP compatibility
-      process.stderr.write(`[DEBUG] ${message}${meta ? ' ' + JSON.stringify(meta) : ''}\n`);
+      process.stderr.write(`[DEBUG] ${message}${this.formatMeta(meta)}\n`);
     }
   }
 
-  info(message: string, meta?: any) {
+  info(message: string, meta?: unknown) {
     if (this.level <= LogLevel.INFO) {
       // Always write to stderr for MCP compatibility
-      process.stderr.write(`[INFO] ${message}${meta ? ' ' + JSON.stringify(meta) : ''}\n`);
+      process.stderr.write(`[INFO] ${message}${this.formatMeta(meta)}\n`);
     }
   }
 
-  warn(message: string, meta?: any) {
+  warn(message: string, meta?: unknown) {
     if (this.level <= LogLevel.WARN) {
       // Always write to stderr for MCP compatibility
-      process.stderr.write(`[WARN] ${message}${meta ? ' ' + JSON.stringify(meta) : ''}\n`);
+      process.stderr.write(`[WARN] ${message}${this.formatMeta(meta)}\n`);
     }
   }
 
-  error(message: string, error?: Error | any) {
+  error(message: string, error?: unknown) {
     if (this.level <= LogLevel.ERROR) {
       // Always write to stderr for MCP compatibility
-      const errorInfo = error instanceof Error ? error.stack : JSON.stringify(error);
+      const errorInfo =
+        error instanceof Error
+          ? error.stack
+          : error !== undefined
+            ? JSON.stringify(error)
+            : '';
       process.stderr.write(`[ERROR] ${message}${errorInfo ? ' ' + errorInfo : ''}\n`);
     }
+  }
+
+  private formatMeta(meta: unknown): string {
+    if (meta === undefined) {
+      return '';
+    }
+    return ` ${JSON.stringify(meta)}`;
   }
 }
 

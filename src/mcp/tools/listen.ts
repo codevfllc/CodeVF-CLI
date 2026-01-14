@@ -5,16 +5,14 @@
 
 import { TasksApi } from '../../lib/api/tasks.js';
 import { logger } from '../../lib/utils/logger.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 export interface ListenToolArgs {
   sessionId?: string;
   verbose?: boolean;
 }
 
-export interface ListenToolResult {
-  content: Array<{ type: string; text: string }>;
-  isError?: boolean;
-}
+export type ListenToolResult = CallToolResult;
 
 export class ListenTool {
   private tasksApi: TasksApi;
@@ -62,60 +60,57 @@ export class ListenTool {
     sessionId: string,
     verbose: boolean
   ): Promise<ListenToolResult> {
-    try {
-      // Get session details (this would be implemented via API)
-      const sessionUrl = `${this.baseUrl}/session/${sessionId}`;
+    // Get session details (this would be implemented via API)
+    const sessionUrl = `${this.baseUrl}/session/${sessionId}`;
 
-      let output = `Monitoring session: ${sessionId}\n\n`;
-      output += `Session URL: ${sessionUrl}\n`;
-      output += `Status: Active\n`;
-      output += `Last updated: ${new Date().toLocaleTimeString()}\n\n`;
+    let output = `Monitoring session: ${sessionId}\n\n`;
+    output += `Session URL: ${sessionUrl}\n`;
+    output += `Status: Active\n`;
+    output += `Last updated: ${new Date().toLocaleTimeString()}\n\n`;
 
-      if (verbose) {
-        output += 'Connection established. Waiting for engineer updates...\n';
-        output += 'Messages will appear as they are sent.\n';
-      }
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: output,
-          },
-        ],
-      };
-    } catch (error) {
-      throw error;
+    if (verbose) {
+      output += 'Connection established. Waiting for engineer updates...\n';
+      output += 'Messages will appear as they are sent.\n';
     }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: output,
+        },
+      ],
+    };
   }
 
   /**
    * List all active sessions for the current user
    */
   private async listActiveSessions(verbose: boolean): Promise<ListenToolResult> {
-    try {
-      let output = 'Active Chat Sessions:\n\n';
+    let output = 'Active Chat Sessions:\n\n';
 
-      // Note: Fetching all active sessions would require a list endpoint
-      // For now, provide guidance on how to monitor sessions
-      output += 'To monitor a specific chat session, use:\n';
-      output += '  codevf-listen <sessionId>\n\n';
-      output += 'Chat sessions are created using codevf-chat tool.\n';
-      output += 'Each session provides a URL for real-time monitoring.\n\n';
-      output += 'Session URLs follow this format:\n';
-      output += `  ${this.baseUrl}/session/<sessionId>\n\n`;
-      output += 'Share these URLs with team members to collaborate on debugging sessions.';
+    // Note: Fetching all active sessions would require a list endpoint
+    // For now, provide guidance on how to monitor sessions
+    output += 'To monitor a specific chat session, use:\n';
+    output += '  codevf-listen <sessionId>\n\n';
+    output += 'Chat sessions are created using codevf-chat tool.\n';
+    output += 'Each session provides a URL for real-time monitoring.\n\n';
+    output += 'Session URLs follow this format:\n';
+    output += `  ${this.baseUrl}/session/<sessionId>\n\n`;
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: output,
-          },
-        ],
-      };
-    } catch (error) {
-      throw error;
+    if (verbose) {
+      output += 'Tip: Use verbose mode to show connection status updates.\n\n';
     }
+
+    output += 'Share these URLs with team members to collaborate on debugging sessions.';
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: output,
+        },
+      ],
+    };
   }
 }

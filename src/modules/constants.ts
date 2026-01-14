@@ -2,7 +2,26 @@
  * Application-wide constants and configuration values
  */
 
-export const CLI_VERSION = '1.0.0';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+function loadPackageVersion(): string {
+  try {
+    const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+    const packageJsonPath = path.resolve(moduleDir, '..', '..', 'package.json');
+    const content = fs.readFileSync(packageJsonPath, 'utf8');
+    const parsed = JSON.parse(content) as { version?: string };
+    if (parsed.version && typeof parsed.version === 'string') {
+      return parsed.version;
+    }
+  } catch {
+    // Best-effort: fall back to an unknown version string.
+  }
+  return '0.0.0';
+}
+
+export const CLI_VERSION = loadPackageVersion();
 
 /**
  * Paste detection configuration

@@ -10,7 +10,7 @@ import { logger } from '../utils/logger.js';
 export interface WebSocketMessage {
   type: string;
   timestamp?: string;
-  payload: any;
+  payload: unknown;
 }
 
 export interface EngineerMessage {

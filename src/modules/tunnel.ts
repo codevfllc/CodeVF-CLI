@@ -84,7 +84,7 @@ export class TunnelManager extends EventEmitter {
       await this.closeTunnel();
     }
 
-    const tunnelOptions: any = { port: options.port };
+    const tunnelOptions: { port: number; subdomain?: string } = { port: options.port };
     if (options.subdomain) {
       tunnelOptions.subdomain = options.subdomain;
     }
@@ -121,9 +121,10 @@ export class TunnelManager extends EventEmitter {
 
       this.emit('created', this.activeTunnel);
       return this.activeTunnel;
-    } catch (error: any) {
-      console.error('Failed to create tunnel:', error);
-      throw new Error(`Tunnel creation failed: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to create tunnel:', message);
+      throw new Error(`Tunnel creation failed: ${message}`);
     }
   }
 

@@ -37,7 +37,7 @@ export class ProjectsApi {
       throw new Error(response.error || 'Failed to fetch projects');
     }
 
-    const projects = (response as any).projects || [];
+    const projects = response.projects ?? [];
     logger.info('Projects fetched', { count: projects.length });
     return projects;
   }
@@ -57,7 +57,7 @@ export class ProjectsApi {
       throw new Error(response.error || 'Failed to create project');
     }
 
-    const project = (response as any).project;
+    const project = response.project;
     if (!project) {
       throw new Error('No project returned from API');
     }

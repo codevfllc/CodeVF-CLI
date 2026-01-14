@@ -6,12 +6,12 @@ import { TokenManager } from '../auth/token-manager.js';
 import { NetworkError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
-export interface ApiResponse<T = any> {
+export type ApiResponse<T = unknown> = {
   success: boolean;
   data?: T;
   error?: string;
   warning?: string;
-}
+} & (T extends object ? Partial<T> : {});
 
 export class ApiClient {
   private baseUrl: string;
@@ -25,7 +25,7 @@ export class ApiClient {
   /**
    * Make authenticated request
    */
-  async request<T = any>(
+  async request<T = unknown>(
     path: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
@@ -78,14 +78,14 @@ export class ApiClient {
   /**
    * GET request
    */
-  async get<T = any>(path: string): Promise<ApiResponse<T>> {
+  async get<T = unknown>(path: string): Promise<ApiResponse<T>> {
     return this.request<T>(path, { method: 'GET' });
   }
 
   /**
    * POST request
    */
-  async post<T = any>(path: string, body?: any): Promise<ApiResponse<T>> {
+  async post<T = unknown>(path: string, body?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(path, {
       method: 'POST',
       body: body ? JSON.stringify(body) : undefined,

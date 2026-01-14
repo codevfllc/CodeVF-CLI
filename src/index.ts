@@ -40,10 +40,17 @@ if (args.length === 0) {
     .command(
       'setup',
       'Configure MCP server for Claude Code, Codex, or Gemini integration',
-      () => {},
-      async () => {
+      (yargs) => {
+        return yargs.option('base-url', {
+          type: 'string',
+          describe: 'Override CodeVF API base URL (e.g. http://localhost:3000)',
+        });
+      },
+      async (argv) => {
         try {
-          await setupCommand();
+          await setupCommand({
+            baseUrl: argv.baseUrl as string | undefined,
+          });
         } catch (error) {
           handleError(error);
         }

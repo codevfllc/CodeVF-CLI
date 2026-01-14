@@ -1,6 +1,6 @@
 {
   "name": "codevf",
-  "version": "1.0.6",
+  "version": "1.0.9",
   "description": "CodeVF CLI - Live debugging with vetted engineers (BETA)",
   "type": "module",
   "main": "dist/index.js",
@@ -23,7 +23,7 @@
     "dev-verbose": "CODEVF_AI_VERBOSE=1 tsx src/index.ts",
     "start": "node dist/index.js",
     "test": "jest",
-    "lint": "eslint src --ext .ts,.tsx",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "prepublishOnly": "npm run build"
   },
@@ -40,7 +40,7 @@
     "@inquirer/prompts": "^8.1.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@opencode-ai/sdk": "*",
-    "archiver": "^6.0.1",
+    "archiver": "^7.0.1",
     "axios": "^1.6.7",
     "chalk": "^5.3.0",
     "cli-spinners": "^3.3.0",
@@ -62,8 +62,9 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/archiver": "^6.0.2",
-    "@types/jest": "^29.5.12",
+    "@types/jest": "^30.0.0",
     "@types/localtunnel": "^2.0.4",
     "@types/node": "^20.11.16",
     "@types/prompts": "^2.4.9",
@@ -72,16 +73,20 @@
     "@types/uuid": "^9.0.7",
     "@types/ws": "^8.5.10",
     "@types/yargs": "^17.0.32",
-    "@typescript-eslint/eslint-plugin": "^6.20.0",
-    "@typescript-eslint/parser": "^6.20.0",
-    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^8.53.0",
+    "@typescript-eslint/parser": "^8.53.0",
+    "eslint": "^9.39.2",
+    "globals": "^16.5.0",
     "ink-testing-library": "^3.0.0",
-    "jest": "^29.7.0",
+    "jest": "^30.2.0",
     "prettier": "^3.2.5",
     "react-devtools-core": "^4.28.5",
     "ts-jest": "^29.1.2",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "test-exclude": "^7.0.1"
   },
   "engines": {
     "node": ">=18.0.0"

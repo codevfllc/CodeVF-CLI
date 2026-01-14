@@ -2,7 +2,7 @@
  * Token management with automatic refresh
  */
 
-import { ConfigManager, CodeVFConfig } from '../config/manager.js';
+import { ConfigManager } from '../config/manager.js';
 import { AuthenticationError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 

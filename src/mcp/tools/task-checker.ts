@@ -3,7 +3,6 @@
  */
 
 import { TasksApi } from '../../lib/api/tasks.js';
-import { logger } from '../../lib/utils/logger.js';
 
 export interface TaskCheckResult {
   shouldPromptUser: boolean;

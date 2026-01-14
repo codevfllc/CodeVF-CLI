@@ -14,7 +14,7 @@ export interface CreateTaskOptions {
   maxCredits: number;
   projectId?: string;
   status?: string;
-  contextData?: any;
+  contextData?: unknown;
   initiatedBy?: string;
   assignmentTimeoutSeconds?: number;
   parentActionId?: string;
@@ -45,6 +45,19 @@ export interface TaskStatus {
   completedAt?: string | null;
 }
 
+export interface ParentTaskChain {
+  taskId: string | null;
+  hasParent: boolean;
+  parentChain: Array<{ taskId: string; mode: string; status: string; message: string }>;
+}
+
+export interface ActiveTask {
+  taskId: string;
+  taskMode?: string;
+  status: string;
+  message?: string;
+}
+
 export class TasksApi {
   private client: ApiClient;
   private baseUrl: string;
@@ -68,7 +81,7 @@ export class TasksApi {
       assignmentTimeoutSeconds: options.assignmentTimeoutSeconds,
     });
 
-    const response = await this.client.post('/api/cli/tasks/create', {
+    const response = await this.client.post<CreateTaskResult>('/api/cli/tasks/create', {
       issueDescription: options.message,
       taskMode: options.taskMode,
       maxCredits: options.maxCredits,
@@ -92,6 +105,10 @@ export class TasksApi {
       throw new Error(response.error || 'Failed to create task');
     }
 
+    if (!response.data) {
+      throw new Error('No task details returned');
+    }
+
     logger.info('Task created', {
       taskId: response.data.taskId,
       actionId: response.data.actionId,
@@ -110,9 +127,9 @@ export class TasksApi {
   /**
    * Get active or requesting tasks (not completed)
    */
-  async getActiveTasks(projectId?: string): Promise<any[]> {
+  async getActiveTasks(projectId?: string): Promise<ActiveTask[]> {
     logger.debug('Getting active tasks', { projectId });
-    const response = await this.client.post('/api/cli/tasks/active', {
+    const response = await this.client.post<ActiveTask[]>('/api/cli/tasks/active', {
       projectId: projectId || this.defaultProjectId,
     });
 
@@ -120,18 +137,22 @@ export class TasksApi {
       throw new Error(response.error || 'Failed to get active tasks');
     }
 
-    return response.data || [];
+    return response.data ?? [];
   }
 
   /**
    * Get task status
    */
-  async getStatus(taskId: string): Promise<any> {
+  async getStatus(taskId: string): Promise<TaskStatus> {
     logger.debug('Getting task status', { taskId });
-    const response = await this.client.get(`/api/cli/tasks/${taskId}/status`);
+    const response = await this.client.get<TaskStatus>(`/api/cli/tasks/${taskId}/status`);
 
     if (!response.success) {
       throw new Error(response.error || 'Failed to get task status');
+    }
+
+    if (!response.data) {
+      throw new Error('No task status returned');
     }
 
     return response.data;
@@ -140,19 +161,19 @@ export class TasksApi {
   /**
    * Get parent task chain up to 4 levels deep
    */
-  async getParentTaskChain(projectId: string, taskId?: string): Promise<{
-    taskId: string | null;
-    hasParent: boolean;
-    parentChain: Array<{ taskId: string; mode: string; status: string; message: string }>;
-  }> {
+  async getParentTaskChain(projectId: string, taskId?: string): Promise<ParentTaskChain> {
     logger.debug('Getting parent task chain', { projectId, taskId });
-    const response = await this.client.post('/api/cli/tasks/parents', {
+    const response = await this.client.post<ParentTaskChain>('/api/cli/tasks/parents', {
       projectId: projectId || this.defaultProjectId,
       taskId: taskId,
     });
 
     if (!response.success) {
       throw new Error(response.error || 'Failed to get parent task chain');
+    }
+
+    if (!response.data) {
+      throw new Error('No parent task chain returned');
     }
 
     return response.data;

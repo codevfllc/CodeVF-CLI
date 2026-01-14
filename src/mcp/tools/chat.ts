@@ -8,6 +8,7 @@ import { ProjectsApi } from '../../lib/api/projects.js';
 import { ApiClient } from '../../lib/api/client.js';
 import { SessionsApi } from '../../lib/api/sessions.js';
 import { logger } from '../../lib/utils/logger.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import axios from 'axios';
 import WebSocket from 'ws';
 import { checkForActiveTasks } from './task-checker.js';
@@ -29,13 +30,20 @@ export interface ChatToolArgs {
   tagId?: number; // Engineer expertise level: 1=Engineer (1.7x), 4=Vibe Coder (1.5x), 5=General Purpose (1.0x, default)
 }
 
-export interface ChatToolResult {
-  content: Array<{ type: string; text: string }>;
-  isError?: boolean;
-}
+export type ChatToolResult = CallToolResult;
 
 // Timeout constants
 const ENGINEER_RESPONSE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+const asRecord = (value: unknown): Record<string, unknown> | null => {
+  if (value && typeof value === 'object') {
+    return value as Record<string, unknown>;
+  }
+  return null;
+};
 
 /**
  * IMPORTANT: This class is NOT thread-safe for concurrent executions.
@@ -322,7 +330,7 @@ export class ChatTool {
             } else {
               fileSize = Buffer.byteLength(attachment.content, 'utf8');
             }
-          } catch (error) {
+          } catch {
             return {
               content: [
                 {
@@ -395,33 +403,6 @@ export class ChatTool {
       }
 
       // Return session URL for extended collaboration
-      const sessionUrl = `${this.baseUrl}/engineer/tasks/${task.taskId}`;
-
-      let response = `Chat session started successfully!\n\n`;
-      response += `Task ID: ${task.taskId}\n`;
-      response += `Max Credits: ${maxCredits}\n`;
-      response += `Mode: Real-time Chat\n`;
-
-      if (args.attachments && args.attachments.length > 0) {
-        response += `Attachments: ${args.attachments.length} file(s) shared with engineer\n`;
-      }
-
-      response += `\nEngineer Session URL: ${sessionUrl}\n\n`;
-      response += `This session will remain active until:\n`;
-      response += `- Maximum credits are reached (${maxCredits})\n`;
-      response += `- Engineer marks the task as completed\n`;
-      response += `- Session timeout (4 hours)\n\n`;
-
-      if (task.warning) {
-        response += `⚠️  ${task.warning}\n\n`;
-      }
-
-      response += `The engineer can now see your message`;
-      if (args.attachments && args.attachments.length > 0) {
-        response += ` and ${args.attachments.length} attachment(s)`;
-      }
-      response += ` and will respond via the CLI interface.`;
-
       logger.info('Waiting for engineer response...');
 
       // Wait for engineer response via WebSocket (30 minute timeout)
@@ -506,9 +487,9 @@ export class ChatTool {
       } catch (error) {
         logger.error('Failed to upload attachment', {
           fileName: attachment.fileName,
-          error: (error as any).message,
+          error: getErrorMessage(error),
         });
-        throw new Error(`Failed to upload ${attachment.fileName}: ${(error as any).message}`);
+        throw new Error(`Failed to upload ${attachment.fileName}: ${getErrorMessage(error)}`);
       }
     }
   }
@@ -516,7 +497,7 @@ export class ChatTool {
   /**
    * Format chat session info
    */
-  private formatResponse(response: any): ChatToolResult {
+  private formatResponse(response: string): ChatToolResult {
     return {
       content: [
         {
@@ -590,10 +571,19 @@ export class ChatTool {
   /**
    * Handle incoming WebSocket messages
    */
-  private handleWebSocketMessage(message: any, taskId: string): void {
-    logger.debug('WebSocket message received', { type: message.type, taskId });
+  private handleWebSocketMessage(message: unknown, taskId: string): void {
+    const messageRecord = asRecord(message);
+    const messageType = messageRecord?.type;
 
-    switch (message.type) {
+    if (typeof messageType !== 'string') {
+      logger.warn('WebSocket message missing type', { taskId });
+      return;
+    }
+
+    logger.debug('WebSocket message received', { type: messageType, taskId });
+    const payload = asRecord(messageRecord?.payload) ?? {};
+
+    switch (messageType) {
       case 'connected':
         logger.info('WebSocket connection confirmed', { taskId });
         // Send initial greeting only on first connection
@@ -607,37 +597,46 @@ export class ChatTool {
         break;
 
       case 'customer_message':
-      case 'engineer_message':
+      case 'engineer_message': {
         // Log the conversation for context
-        const sender = message.payload?.sender || message.type.replace('_message', '');
+        const sender =
+          typeof payload.sender === 'string' ? payload.sender : messageType.replace('_message', '');
         // Support both payload.content and payload.message for backwards compatibility
-        const content = message.payload?.content || message.payload?.message || '';
+        const content =
+          typeof payload.content === 'string'
+            ? payload.content
+            : typeof payload.message === 'string'
+              ? payload.message
+              : '';
         logger.debug('Chat message', { sender, content: content.substring(0, 100) });
 
         // Analyze if Claude should respond
         this.analyzeAndRespond(content, sender, taskId);
         break;
+      }
 
-      case 'request_command':
-        const command = message.payload?.command || '';
+      case 'request_command': {
+        const command = typeof payload.command === 'string' ? payload.command : '';
         logger.info('Engineer requested command', { command });
         // Could warn about dangerous commands
         this.analyzeCommand(command, taskId);
         break;
+      }
 
-      case 'command_output':
-        const output = message.payload?.output || '';
+      case 'command_output': {
+        const output = typeof payload.output === 'string' ? payload.output : '';
         logger.debug('Command output received', { length: output.length });
         // Could analyze errors in output
         this.analyzeOutput(output, taskId);
         break;
+      }
 
       case 'engineer_connected':
-        logger.info('Engineer joined the session', { engineerId: message.payload?.userId });
+        logger.info('Engineer joined the session', { engineerId: payload.userId });
         break;
 
       case 'customer_connected':
-        logger.info('Customer joined the session', { customerId: message.payload?.userId });
+        logger.info('Customer joined the session', { customerId: payload.userId });
         break;
     }
   }

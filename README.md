@@ -39,6 +39,14 @@ Configure MCP server integration with Claude Code, Codex, and Gemini:
 - Create Claude Code slash commands for CodeVF
 - Select default project for context
 
+Override the backend URL during setup:
+
+```bash
+codevf setup --base-url http://localhost:3000
+```
+
+You can also set `CODEVF_API_URL` for the same effect.
+
 ### `codevf mcp stdio`
 Start the MCP server for non-Claude clients:
 - `codevf mcp stdio` - Launch MCP over stdio (command/args-based clients)

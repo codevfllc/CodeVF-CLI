@@ -7,8 +7,9 @@ import { TasksApi, CreateTaskResult } from '../../lib/api/tasks.js';
 import { ProjectsApi } from '../../lib/api/projects.js';
 import { ApiClient } from '../../lib/api/client.js';
 import axios from 'axios';
-import { checkForActiveTasks, analyzeTaskEscalation } from './task-checker.js';
+import { checkForActiveTasks } from './task-checker.js';
 import { logger } from '../../lib/utils/logger.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 export interface FileAttachment {
   fileName: string;
@@ -26,10 +27,10 @@ export interface InstantToolArgs {
   tagId?: number; // Engineer expertise level: 1=Engineer (1.7x), 4=Vibe Coder (1.5x), 5=General Purpose (1.0x, default)
 }
 
-export interface InstantToolResult {
-  content: Array<{ type: string; text: string }>;
-  isError?: boolean;
-}
+export type InstantToolResult = CallToolResult;
+
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 export class InstantTool {
   private tasksApi: TasksApi;
@@ -265,7 +266,7 @@ export class InstantTool {
             } else {
               fileSize = Buffer.byteLength(attachment.content, 'utf8');
             }
-          } catch (error) {
+          } catch {
             return {
               content: [
                 {
@@ -407,9 +408,9 @@ export class InstantTool {
       } catch (error) {
         logger.error('Failed to upload attachment', {
           fileName: attachment.fileName,
-          error: (error as any).message,
+          error: getErrorMessage(error),
         });
-        throw new Error(`Failed to upload ${attachment.fileName}: ${(error as any).message}`);
+        throw new Error(`Failed to upload ${attachment.fileName}: ${getErrorMessage(error)}`);
       }
     }
   }
