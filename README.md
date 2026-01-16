@@ -63,7 +63,7 @@ Start the MCP server over HTTP/SSE for non-Claude clients:
 
 ## Support
 
-- Documentation: https://docs.codevf.com
+- Documentation: http://codevf.com/mcp
 - Issues: https://github.com/codevf/cli/issues
 - Email: support@codevf.com
 

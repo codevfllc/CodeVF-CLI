@@ -1,6 +1,6 @@
 {
   "name": "codevf",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "CodeVF CLI - Live debugging with vetted engineers (BETA)",
   "type": "module",
   "main": "dist/index.js",

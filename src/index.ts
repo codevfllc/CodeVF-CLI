@@ -34,7 +34,7 @@ if (args.length === 0) {
     .scriptName('codevf')
     .version(CLI_VERSION)
     .usage('$0 <command> [options]')
-    .epilogue('Documentation: https://docs.codevf.com');
+    .epilogue('Documentation: http://codevf.com/mcp');
 
   cli
     .command(
@@ -98,7 +98,7 @@ if (args.length === 0) {
     .alias('version', 'v')
     .epilogue(
       chalk.dim(
-        'For more information, visit: https://docs.codevf.com\n' +
+        'For more information, visit: http://codevf.com/mcp\n' +
           'Report issues: https://github.com/codevf/cli/issues'
       )
     )

@@ -111,3 +111,66 @@ When Claude is planning multi-step implementations, especially UI-heavy tasks:
 - \`/cvf Create tunnel to my dev server on port 3000\` → Use codevf-tunnel
 - \`/cvf Make the login form look more modern and user-friendly\` → Use tunnel + iterative codevf-instant feedback
 `;
+
+export const chatCommandContent = `---
+description: Start an extended CodeVF engineer chat session with full context
+---
+
+# CodeVF Engineer Chat
+
+Please start an extended debugging session with a CodeVF engineer using the \`codevf-chat\` MCP tool.
+
+**Current context (include relevant logs, errors, and recent changes):**
+{{PROMPT}}
+
+---
+
+**Instructions for Claude:**
+
+1. Ask a short clarifying question if needed: "What's the issue?"
+2. Call \`codevf-chat\` with:
+   - \`message\`: include the user's issue and any gathered context
+   - \`maxCredits\`: suggest 240 (or adjust if user specifies)
+3. Return the engineer response or session link directly.
+`;
+
+export const perfCommandContent = `---
+description: Get performance-focused review or optimization guidance from a CodeVF engineer
+---
+
+# CodeVF Performance Review
+
+Please help me improve performance by consulting a CodeVF engineer using the appropriate MCP tool.
+
+**Current context (include benchmarks, profiler output, metrics, and hot paths):**
+{{PROMPT}}
+
+---
+
+**Instructions for Claude:**
+
+1. **Clarify the goal** quickly if needed:
+   - Target metric (latency, throughput, memory, CPU, bundle size)
+   - Expected vs current numbers
+   - Environment (prod/dev, hardware, dataset size)
+
+2. **Pick the right tool:**
+   - Use \`codevf-instant\` for:
+     - Single bottleneck checks
+     - Quick sanity check on a proposed optimization
+     - Small profiling/benchmark interpretation
+   - Use \`codevf-chat\` for:
+     - Multi-step profiling/measurement plans
+     - Architecture or algorithm changes
+     - End-to-end tuning across layers
+
+3. **Provide actionable context to the engineer:**
+   - Exact code paths or files
+   - Repro steps and dataset sizes
+   - Any profiling data or flamegraphs
+   - Deployment/runtime constraints
+
+4. **Ask for measurable outcomes:**
+   - Request concrete steps and expected impact
+   - Ask for validation approach (before/after metrics)
+`;

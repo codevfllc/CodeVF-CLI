@@ -185,13 +185,13 @@ export class TasksApi {
   async waitForResponse(
     taskId: string,
     options: { timeoutMs?: number; pollIntervalMs?: number } = {}
-  ): Promise<{ text: string; creditsUsed: number; duration: string }> {
+  ): Promise<{ text: string; creditsUsed?: number; durationSeconds: number }> {
     const timeoutMs = options.timeoutMs ?? 300000;
     const pollIntervalMs = options.pollIntervalMs ?? 3000;
     const startTime = Date.now();
     const seenMessageIds = new Set<string>();
     let responseText = '';
-    let creditsUsed = 0;
+    let creditsUsed: number | undefined;
 
     while (Date.now() - startTime < timeoutMs) {
       const status = (await this.getStatus(taskId)) as TaskStatus;
@@ -234,11 +234,11 @@ export class TasksApi {
       throw new TimeoutError('Timeout waiting for engineer response');
     }
 
-    const duration = Math.ceil((Date.now() - startTime) / 60000);
+    const durationSeconds = Math.ceil((Date.now() - startTime) / 1000);
     return {
       text: responseText.trim(),
       creditsUsed,
-      duration: `${duration} min`,
+      durationSeconds,
     };
   }
 }

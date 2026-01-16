@@ -340,10 +340,7 @@ export class InstantTool {
       });
 
       // Format response
-      const formattedResponse = this.formatResponse({
-        ...response,
-        duration: parseInt(response.duration),
-      });
+      const formattedResponse = this.formatResponse(response);
 
       return {
         content: [
@@ -479,7 +476,7 @@ export class InstantTool {
       | {
           text: string;
           creditsUsed?: number;
-          duration?: number;
+          durationSeconds?: number;
           // Allow extra properties without losing type safety for known fields
           [key: string]: unknown;
         }
@@ -496,8 +493,8 @@ export class InstantTool {
     if (typeof response.creditsUsed === 'number') {
       metaParts.push(`credits used: ${response.creditsUsed}`);
     }
-    if (typeof response.duration === 'number') {
-      metaParts.push(`duration: ${response.duration}s`);
+    if (typeof response.durationSeconds === 'number') {
+      metaParts.push(`duration: ${response.durationSeconds}s`);
     }
 
     if (metaParts.length > 0) {

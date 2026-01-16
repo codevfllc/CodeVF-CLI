@@ -10,8 +10,7 @@ import path from 'path';
 import os from 'os';
 import { ConfigManager } from '../lib/config/manager.js';
 import { OAuthFlow } from '../lib/auth/oauth-flow.js';
-import { commandContent } from './cvf-command-content.js';
-import { chatCommandContent } from './cvf-chat-command-content.js';
+import { commandContent, chatCommandContent, perfCommandContent } from '../prompts/cvf.js';
 import { CLI_VERSION } from '../modules/constants.js';
 import { checkForUpdates } from '../utils/version-check.js';
 
@@ -107,6 +106,7 @@ function createCvfSlashCommand(): boolean {
     const commandsDir = path.join(homeDir, '.claude', 'commands');
     const cvfCommandPath = path.join(commandsDir, 'cvf.md');
     const cvfChatCommandPath = path.join(commandsDir, 'cvf-chat.md');
+    const cvfPerfCommandPath = path.join(commandsDir, 'cvf-perf.md');
 
     // Create commands directory if it doesn't exist
     if (!fs.existsSync(commandsDir)) {
@@ -124,11 +124,19 @@ function createCvfSlashCommand(): boolean {
     // Check if cvf-chat.md already exists
     if (fs.existsSync(cvfChatCommandPath)) {
       console.log(chalk.green('✅ /cvf-chat slash command already exists'));
+    } else {
+      fs.writeFileSync(cvfChatCommandPath, chatCommandContent, { mode: 0o644 });
+      console.log(chalk.green('✅ Created /cvf-chat slash command for Claude Code'));
+    }
+
+    // Check if cvf-perf.md already exists
+    if (fs.existsSync(cvfPerfCommandPath)) {
+      console.log(chalk.green('✅ /cvf-perf slash command already exists'));
       return true;
     }
 
-    fs.writeFileSync(cvfChatCommandPath, chatCommandContent, { mode: 0o644 });
-    console.log(chalk.green('✅ Created /cvf-chat slash command for Claude Code'));
+    fs.writeFileSync(cvfPerfCommandPath, perfCommandContent, { mode: 0o644 });
+    console.log(chalk.green('✅ Created /cvf-perf slash command for Claude Code'));
     return true;
   } catch (error) {
     console.log(chalk.yellow('⚠️  Could not create /cvf slash command:'), (error as Error).message);
@@ -581,30 +589,9 @@ export async function setupCommand(options: SetupCommandOptions = {}): Promise<v
 
     console.log(chalk.bold.green('\n🎉 Setup complete!\n'));
 
-    if (configuredClaude || configuredCodex || configuredGemini) {
-      console.log(chalk.bold('Next steps:'));
-
-      if (configuredClaude) {
-        console.log(chalk.dim('1. Restart Claude Code to load the MCP server'));
-        console.log(chalk.dim('2. Use the /cvf slash command in Claude Code:'));
-        console.log(chalk.dim('   Example: ') + chalk.white('/cvf Does this fix work?'));
-        console.log(chalk.dim('   Example: ') + chalk.white('/cvf Create tunnel to port 3000'));
-        console.log(chalk.dim('3. Or ask Claude to use MCP tools directly:'));
-        console.log(chalk.dim('   - codevf-instant: Quick validation (1-10 credits)'));
-        console.log(chalk.dim('   - codevf-chat: Extended debugging (2 credits/min)'));
-        console.log(chalk.dim('   - codevf-tunnel: Expose local dev server (free)\n'));
-      }
-
-      if (configuredCodex) {
-        console.log(chalk.dim('1. Restart Codex to load the MCP server'));
-        console.log(chalk.dim('2. Use /mcp in Codex to confirm CodeVF is connected\n'));
-      }
-
-      if (configuredGemini) {
-        console.log(chalk.dim('1. Restart Gemini to load the MCP server'));
-        console.log(chalk.dim('2. Confirm CodeVF MCP tools are available\n'));
-      }
-    }
+    void configuredClaude;
+    void configuredCodex;
+    void configuredGemini;
   } catch (error) {
     spinner.fail('Setup failed');
     console.error(chalk.red('\n❌ Error:'), (error as Error).message);
