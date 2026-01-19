@@ -18,7 +18,7 @@ The CodeVF CLI is a customer-facing tool that enables:
 ## 3. Current Development Scope (IMPORTANT)
 
 **ACTIVE SCOPE: Public Commands**
-- **Primary Command**: `codevf setup`
+- **Primary Command**: `npx codevf setup`
 - **Secondary Commands**: `codevf mcp stdio`, `codevf mcp http --port 3333`
 - **Status**: Active development and user-facing
 
@@ -37,7 +37,7 @@ The CodeVF CLI is a customer-facing tool that enables:
 
 ## 4. CLI Commands (Public)
 
-### `codevf setup`
+### `npx codevf setup`
 - Guides the user through MCP configuration
 - Writes MCP settings for supported clients
 

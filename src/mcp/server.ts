@@ -50,7 +50,7 @@ export interface McpRuntime {
 export async function createMcpServer(): Promise<McpRuntime> {
   const configManager = new ConfigManager('mcp-config.json');
   if (!configManager.exists()) {
-    throw new Error('Not configured. Run: codevf setup');
+    throw new Error('Not configured. Run: npx codevf setup');
   }
 
   let config;

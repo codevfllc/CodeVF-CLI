@@ -24,7 +24,7 @@ if (args.length === 0) {
     setupCommand().catch(handleError);
   } else {
     console.log(chalk.dim('Available commands:'));
-    console.log(chalk.dim('  codevf setup'));
+    console.log(chalk.dim('  npx codevf setup'));
     console.log(chalk.dim('  codevf mcp stdio'));
     console.log(chalk.dim('  codevf mcp http --port 3333'));
     process.exit(0);
@@ -92,7 +92,7 @@ if (args.length === 0) {
         }
       }
     )
-    .demandCommand(1, chalk.yellow('Run "codevf setup" or "codevf mcp <mode>" to start MCP.'))
+    .demandCommand(1, chalk.yellow('Run "npx codevf setup" or "codevf mcp <mode>" to start MCP.'))
     .help()
     .alias('help', 'h')
     .alias('version', 'v')

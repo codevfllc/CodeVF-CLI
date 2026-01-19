@@ -12,7 +12,7 @@ Please help me with the following question or task by consulting a CodeVF engine
 ---
 
 **Available CodeVF Commands:**
-- \`codevf setup\` - Configure MCP server for Claude Code, Codex, and Gemini
+- \`npx codevf setup\` - Configure MCP server for Claude Code, Codex, and Gemini
 - \`codevf mcp stdio\` - Start MCP server over stdio
 - \`codevf mcp http --port 3333\` - Start MCP server over HTTP/SSE
 

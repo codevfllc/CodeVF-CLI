@@ -5,12 +5,12 @@ Connect Claude Code, Codex, or Gemini to live human engineers.
 ## Install
 
 ```bash
-npm install -g codevf
+npx codevf
 ```
 
 ## Quick Start (Claude Code)
 
-1. `codevf setup`
+1. `npx codevf setup`
 2. In Claude Code, type `claude`
 3. It works out of the box
 
@@ -18,7 +18,7 @@ Use `/cvf` in Claude Code to force CodeVF.
 
 ## Quick Start (Codex)
 
-1. `codevf setup`
+1. `npx codevf setup`
 2. In Codex, type `codex`
 3. It works out of the box
 
@@ -26,13 +26,13 @@ Use `/mcp` in Codex to confirm CodeVF is connected.
 
 ## Quick Start (Gemini)
 
-1. `codevf setup`
+1. `npx codevf setup`
 2. In Gemini, restart the client
 3. It works out of the box
 
 ## Commands
 
-### `codevf setup`
+### `npx codevf setup`
 Configure MCP server integration with Claude Code, Codex, and Gemini:
 - Authenticate with CodeVF using OAuth
 - Auto-configure Claude Code's `~/.claude.json` file
@@ -42,7 +42,7 @@ Configure MCP server integration with Claude Code, Codex, and Gemini:
 Override the backend URL during setup:
 
 ```bash
-codevf setup --base-url http://localhost:3000
+npx codevf setup --base-url http://localhost:3000
 ```
 
 You can also set `CODEVF_API_URL` for the same effect.

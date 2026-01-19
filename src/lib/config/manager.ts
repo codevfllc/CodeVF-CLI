@@ -54,7 +54,7 @@ export class ConfigManager {
   load(): CodeVFConfig {
     if (!this.exists()) {
       throw new ConfigError(
-        `Configuration file not found. Run: codevf setup`
+        `Configuration file not found. Run: npx codevf setup`
       );
     }
 

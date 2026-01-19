@@ -21,7 +21,7 @@ export class TokenManager {
     const config = this.configManager.load();
 
     if (!config.auth) {
-      throw new AuthenticationError('Not authenticated. Run: codevf setup');
+      throw new AuthenticationError('Not authenticated. Run: npx codevf setup');
     }
 
     // Check if token expires soon
@@ -96,7 +96,7 @@ export class TokenManager {
       logger.info('Token refreshed successfully');
     } catch (error) {
       logger.error('Token refresh failed', error);
-      throw new AuthenticationError(`Token refresh failed. Please re-authenticate: codevf setup`);
+      throw new AuthenticationError(`Token refresh failed. Please re-authenticate: npx codevf setup`);
     }
   }
 

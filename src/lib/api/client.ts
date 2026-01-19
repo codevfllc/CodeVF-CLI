@@ -56,7 +56,7 @@ export class ApiClient {
 
         if (response.status === 401) {
           throw new NetworkError(
-            'Authentication failed. Please run: codevf setup'
+            'Authentication failed. Please run: npx codevf setup'
           );
         }
 

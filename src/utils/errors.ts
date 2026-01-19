@@ -13,10 +13,10 @@ export function handleError(error: unknown): void {
     // Provide helpful hints based on error type
     switch (error.name) {
       case 'AuthError':
-        logger.error(chalk.yellow('\nPlease run: codevf setup'));
+        logger.error(chalk.yellow('\nPlease run: npx codevf setup'));
         break;
       case 'ConfigError':
-        logger.error(chalk.yellow('\nPlease run: codevf setup'));
+        logger.error(chalk.yellow('\nPlease run: npx codevf setup'));
         break;
       case 'NetworkError':
         logger.error(chalk.yellow('\nPlease check your internet connection.'));

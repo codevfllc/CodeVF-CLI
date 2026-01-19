@@ -380,7 +380,7 @@ export async function setupCommand(options: SetupCommandOptions = {}): Promise<v
         `⚠️  Update available: ${updateCheck.currentVersion} → ${updateCheck.latestVersion}`
       )
     );
-    console.log(chalk.dim('   Run: npm install -g codevf@latest'));
+    console.log(chalk.dim('   Run: npx codevf@latest'));
     console.log(chalk.dim('   Or: npx codevf@latest setup'));
     console.log('');
   }
