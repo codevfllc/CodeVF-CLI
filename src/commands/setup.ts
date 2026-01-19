@@ -164,6 +164,7 @@ async function autoConfigureCodex(): Promise<boolean> {
     console.log(chalk.dim('   [mcp_servers.codevf]'));
     console.log(chalk.dim('   command = "node"'));
     console.log(chalk.dim('   args = ["<path>/dist/mcp/index.js"]'));
+    console.log(chalk.dim('   tool_timeout_sec = 1200'));
     return false;
   }
 
@@ -178,9 +179,16 @@ async function autoConfigureCodex(): Promise<boolean> {
       configContent = fs.readFileSync(configPath, 'utf8');
     }
 
+    const desiredTimeoutSec = 20 * 60;
     const hasCodevf = /^\s*\[mcp_servers\.codevf\]\s*$/m.test(configContent);
     if (hasCodevf) {
-      console.log(chalk.green('✅ CodeVF MCP server already configured for Codex!'));
+      const { nextContent, updated } = upsertCodexToolTimeout(configContent, desiredTimeoutSec);
+      if (updated) {
+        fs.writeFileSync(configPath, nextContent, { mode: 0o600 });
+        console.log(chalk.green('✅ Updated Codex timeout for CodeVF MCP server to 20 minutes.'));
+      } else {
+        console.log(chalk.green('✅ CodeVF MCP server already configured for Codex!'));
+      }
       return true;
     }
 
@@ -189,6 +197,7 @@ async function autoConfigureCodex(): Promise<boolean> {
       '[mcp_servers.codevf]',
       'command = "node"',
       `args = ["${mcpServerPath}"]`,
+      `tool_timeout_sec = ${desiredTimeoutSec}`,
       '',
     ].join('\n');
 
@@ -204,6 +213,49 @@ async function autoConfigureCodex(): Promise<boolean> {
     console.error(chalk.red('\n❌ Codex auto-config failed:'), (error as Error).message);
     return false;
   }
+}
+
+function upsertCodexToolTimeout(
+  configContent: string,
+  timeoutSec: number
+): { nextContent: string; updated: boolean } {
+  const lines = configContent.split(/\r?\n/);
+  const sectionHeader = '[mcp_servers.codevf]';
+  const startIndex = lines.findIndex(line => line.trim() === sectionHeader);
+  if (startIndex === -1) {
+    return { nextContent: configContent, updated: false };
+  }
+
+  let endIndex = lines.length;
+  for (let i = startIndex + 1; i < lines.length; i += 1) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      endIndex = i;
+      break;
+    }
+  }
+
+  const timeoutLine = `tool_timeout_sec = ${timeoutSec}`;
+  for (let i = startIndex + 1; i < endIndex; i += 1) {
+    if (lines[i].trim().startsWith('tool_timeout_sec')) {
+      if (lines[i].trim() === timeoutLine) {
+        return { nextContent: configContent, updated: false };
+      }
+      lines[i] = timeoutLine;
+      return { nextContent: lines.join('\n'), updated: true };
+    }
+  }
+
+  let insertAt = endIndex;
+  for (let i = startIndex + 1; i < endIndex; i += 1) {
+    if (lines[i].trim().startsWith('args')) {
+      insertAt = i + 1;
+      break;
+    }
+  }
+
+  lines.splice(insertAt, 0, timeoutLine);
+  return { nextContent: lines.join('\n'), updated: true };
 }
 
 /**
