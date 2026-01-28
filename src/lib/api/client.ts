@@ -27,22 +27,24 @@ export class ApiClient {
    */
   async request<T = unknown>(
     path: string,
-    options: RequestInit = {}
+    options: RequestInit & { agentIdentifier?: string } = {}
   ): Promise<ApiResponse<T>> {
     const token = await this.tokenManager.getValidToken();
+    const { agentIdentifier, ...requestOptions } = options;
 
     const url = `${this.baseUrl}${path}`;
-    const headers = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
-      ...options.headers,
+      ...(agentIdentifier ? { 'X-Agent-Identifier': agentIdentifier } : {}),
+      ...(requestOptions.headers as Record<string, string>),
     };
 
-    logger.debug('API request', { method: options.method || 'GET', url });
+    logger.debug('API request', { method: requestOptions.method || 'GET', url, agentIdentifier });
 
     try {
       const response = await fetch(url, {
-        ...options,
+        ...requestOptions,
         headers,
       });
 
@@ -78,17 +80,18 @@ export class ApiClient {
   /**
    * GET request
    */
-  async get<T = unknown>(path: string): Promise<ApiResponse<T>> {
-    return this.request<T>(path, { method: 'GET' });
+  async get<T = unknown>(path: string, agentIdentifier?: string): Promise<ApiResponse<T>> {
+    return this.request<T>(path, { method: 'GET', agentIdentifier });
   }
 
   /**
    * POST request
    */
-  async post<T = unknown>(path: string, body?: unknown): Promise<ApiResponse<T>> {
+  async post<T = unknown>(path: string, body?: unknown, agentIdentifier?: string): Promise<ApiResponse<T>> {
     return this.request<T>(path, {
       method: 'POST',
       body: body ? JSON.stringify(body) : undefined,
+      agentIdentifier,
     });
   }
 

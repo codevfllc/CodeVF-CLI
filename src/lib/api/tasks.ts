@@ -19,6 +19,7 @@ export interface CreateTaskOptions {
   assignmentTimeoutSeconds?: number;
   parentActionId?: string;
   tagId?: number; // Engineer expertise tag (1=Engineer 1.7x, 4=Vibe Coder 1.5x, 5=General Purpose 1.0x)
+  agentIdentifier?: string; // Agent/client identifier (e.g., "Claude Code", "Codex", "Gemini")
 }
 
 export interface CreateTaskResult {
@@ -93,7 +94,7 @@ export class TasksApi {
       assignmentTimeoutSeconds: options.assignmentTimeoutSeconds, // Always send if provided
       parentActionId: options.parentActionId ? parseInt(options.parentActionId) : undefined,
       tagId: options.tagId, // Engineer expertise tag (defaults to General Purpose if not specified)
-    });
+    }, options.agentIdentifier);
 
     if (!response.success || !response.data) {
       // Check for credit errors
