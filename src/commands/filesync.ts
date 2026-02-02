@@ -245,30 +245,28 @@ export async function fileSyncCommand(options: FileSyncOptions): Promise<void> {
 
     spinner2.succeed(`Prepared ${chalk.bold(filesWithContent.length)} files`);
 
-    // Send to backend (this would be an API call to push files to engineer)
-    const syncSpinner = ora('Syncing files to engineer...').start();
+    // Note: Actual backend synchronization is not implemented yet.
+    const syncSpinner = ora('Preparing to sync files to engineer...').start();
 
-    try {
-      // This is a placeholder for the actual API call
-      // In a real implementation, you would have a dedicated endpoint like:
-      // await apiClient.post('/api/cli/filesync', {
-      //   directoryName: path.basename(targetDir),
-      //   files: filesWithContent,
-      //   projectId: config.defaults?.projectId || '1'
-      // });
+    // Explicitly inform the user that no upload is performed, to avoid
+    // giving the impression that files were synced successfully.
+    syncSpinner.fail('File synchronization is not yet available in this version of the CLI.');
 
-      // For now, just simulate the sync
-      syncSpinner.succeed(`Files synced successfully!`);
+    console.log(chalk.yellow('\nFiles have been prepared locally, but were NOT uploaded to the backend.'));
+    console.log(chalk.yellow('Once file synchronization is implemented, this command will upload:'));
+    console.log(chalk.gray(`  • ${fileData.length} files`));
+    console.log(chalk.gray(`  • ${formatBytes(totalSize)} total`));
+    console.log(chalk.gray(`\nRun "codevf setup" to configure or check your project settings.`));
 
-      console.log(chalk.green(`\n✅ Ready for engineer collaboration`));
-      console.log(chalk.gray(`\nEngineers can now access:`));
-      console.log(chalk.gray(`  • ${fileData.length} files`));
-      console.log(chalk.gray(`  • ${formatBytes(totalSize)} total`));
-      console.log(chalk.gray(`\nRun "codevf setup" to configure or check your project settings.`));
-    } catch (error) {
-      syncSpinner.fail('Failed to sync files');
-      throw error;
-    }
+    // Exit the command here so we do not report a misleading successful sync.
+    return;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(chalk.red(`❌ Sync failed: ${message}`));
+    process.exit(1);
+  }
+}
+
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(chalk.red(`❌ Sync failed: ${message}`));
