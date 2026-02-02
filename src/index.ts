@@ -8,6 +8,7 @@ import { hideBin } from 'yargs/helpers';
 import chalk from 'chalk';
 import { setupCommand } from './commands/setup.js';
 import { startMcpHttp, startMcpStdio } from './commands/mcp.js';
+import { fileSyncCommand } from './commands/filesync.js';
 import { handleError } from './utils/errors.js';
 import { CLI_VERSION } from './modules/constants.js';
 
@@ -27,6 +28,7 @@ if (args.length === 0) {
     console.log(chalk.dim('  npx codevf setup'));
     console.log(chalk.dim('  codevf mcp stdio'));
     console.log(chalk.dim('  codevf mcp http --port 3333'));
+    console.log(chalk.dim('  codevf filesync [directory]'));
     process.exit(0);
   }
 } else {
@@ -87,6 +89,32 @@ if (args.length === 0) {
             return;
           }
           await startMcpStdio();
+        } catch (error) {
+          handleError(error);
+        }
+      }
+    )
+    .command(
+      'filesync [directory]',
+      'Push a directory to an engineer for collaboration',
+      (yargs) => {
+        return yargs
+          .positional('directory', {
+            type: 'string',
+            describe: 'Directory to sync (defaults to current directory)',
+          })
+          .option('disable-gitignore', {
+            type: 'boolean',
+            default: false,
+            describe: 'Disable .gitignore patterns and sync all files',
+          });
+      },
+      async (argv) => {
+        try {
+          await fileSyncCommand({
+            directory: argv.directory as string | undefined,
+            disableGitignore: argv['disable-gitignore'] as boolean,
+          });
         } catch (error) {
           handleError(error);
         }

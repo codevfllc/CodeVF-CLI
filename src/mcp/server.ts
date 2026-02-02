@@ -149,6 +149,11 @@ export async function createMcpServer(): Promise<McpRuntime> {
                 description:
                   'Optional: Decision for handling active task. Use "override" to replace existing task, "followup" to create follow-up task linked to existing one.',
               },
+              agentIdentifier: {
+                type: 'string',
+                description:
+                  'IMPORTANT: Identify yourself by passing your agent/client name (e.g., "Claude Code", "Codex", "Gemini"). This helps track which agent is making the request and is used for analytics. If not provided, requests will be marked as "Unknown".',
+              },
             },
             required: ['message', 'maxCredits'],
           },
@@ -223,6 +228,11 @@ export async function createMcpServer(): Promise<McpRuntime> {
                   'Set to true if reconnecting to an existing session to skip greeting message',
                 default: false,
               },
+              agentIdentifier: {
+                type: 'string',
+                description:
+                  'IMPORTANT: Identify yourself by passing your agent/client name (e.g., "Claude Code", "Codex", "Gemini"). This helps track which agent is making the request and is used for analytics. If not provided, requests will be marked as "Unknown".',
+              },
             },
             required: ['message'],
           },
@@ -249,6 +259,11 @@ export async function createMcpServer(): Promise<McpRuntime> {
                 type: 'string',
                 description:
                   'Optional description of why tunnel is needed (e.g., "Testing OAuth callback")',
+              },
+              agentIdentifier: {
+                type: 'string',
+                description:
+                  'IMPORTANT: Identify yourself by passing your agent/client name (e.g., "Claude Code", "Codex", "Gemini"). This helps track which agent is making the request and is used for analytics. If not provided, requests will be marked as "Unknown".',
               },
             },
             required: ['port'],

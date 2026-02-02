@@ -25,6 +25,7 @@ export interface InstantToolArgs {
   continueTaskId?: string;
   decision?: 'override' | 'followup';
   tagId?: number; // Engineer expertise level: 1=Engineer (1.7x), 4=Vibe Coder (1.5x), 5=General Purpose (1.0x, default)
+  agentIdentifier?: string; // Agent/client identifier (e.g., "Claude Code", "Codex", "Gemini")
 }
 
 export type InstantToolResult = CallToolResult;
@@ -108,6 +109,7 @@ export class InstantTool {
                 logger.info('Overriding existing task', { taskId: task.id });
                 await this.apiClient.request(`/api/cli/tasks/${task.id}/override`, {
                   method: 'POST',
+                  agentIdentifier: args.agentIdentifier,
                 });
                 logger.info('Task overridden successfully');
               } catch (err) {
@@ -125,7 +127,8 @@ export class InstantTool {
                 project.id.toString(),
                 args.message,
                 args.maxCredits,
-                args.assignmentTimeoutSeconds
+                args.assignmentTimeoutSeconds,
+                args.agentIdentifier
               );
             }
             break;
@@ -149,7 +152,8 @@ export class InstantTool {
                 project.id.toString(),
                 args.message,
                 args.maxCredits,
-                args.assignmentTimeoutSeconds
+                args.assignmentTimeoutSeconds,
+                args.agentIdentifier
               );
             case 'override':
               logger.info('User chose to override continued task');
@@ -161,6 +165,7 @@ export class InstantTool {
                   `/api/cli/tasks/${taskCheck.taskToResumeId}/override`,
                   {
                     method: 'POST',
+                    agentIdentifier: args.agentIdentifier,
                   }
                 );
                 logger.info('Task overridden successfully');
@@ -301,6 +306,7 @@ export class InstantTool {
         projectId: project.id.toString(),
         assignmentTimeoutSeconds,
         tagId: args.tagId, // Engineer expertise level (defaults to General Purpose if not specified)
+        agentIdentifier: args.agentIdentifier,
       });
 
       logger.info('Task created', { taskId: task.taskId });
@@ -310,7 +316,7 @@ export class InstantTool {
         logger.info('Uploading attachments', { count: args.attachments.length });
 
         try {
-          await this.uploadAttachments(task.taskId, args.attachments);
+          await this.uploadAttachments(task.taskId, args.attachments, args.agentIdentifier);
           logger.info('All attachments uploaded successfully');
         } catch (uploadError) {
           logger.error('Failed to upload attachments', uploadError);
@@ -368,7 +374,7 @@ export class InstantTool {
   /**
    * Upload attachments for a task
    */
-  private async uploadAttachments(taskId: string, attachments: FileAttachment[]): Promise<void> {
+  private async uploadAttachments(taskId: string, attachments: FileAttachment[], agentIdentifier?: string): Promise<void> {
     // Get auth token from environment or config
     const authToken = process.env.CODEVF_AUTH_TOKEN || 'dev-token';
 
@@ -379,6 +385,15 @@ export class InstantTool {
           mimeType: attachment.mimeType,
         });
 
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        };
+
+        if (agentIdentifier) {
+          headers['X-Agent-Identifier'] = agentIdentifier;
+        }
+
         const response = await axios.post(
           `${this.baseUrl}/api/cli/tasks/${taskId}/upload-file`,
           {
@@ -387,10 +402,7 @@ export class InstantTool {
             mimeType: attachment.mimeType,
           },
           {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              'Content-Type': 'application/json',
-            },
+            headers,
           }
         );
 
@@ -420,7 +432,8 @@ export class InstantTool {
     projectId: string,
     message: string,
     maxCredits?: number,
-    assignmentTimeoutSeconds?: number
+    assignmentTimeoutSeconds?: number,
+    agentIdentifier?: string
   ): Promise<InstantToolResult> {
     try {
       logger.info('Creating follow-up task', { parentTaskId });
@@ -429,7 +442,7 @@ export class InstantTool {
         projectId,
         maxCredits: maxCredits || 10,
         assignmentTimeoutSeconds,
-      })) as { success: boolean; data: CreateTaskResult };
+      }, agentIdentifier)) as { success: boolean; data: CreateTaskResult };
       logger.info('Follow-up task created', {
         followUpTaskId: followupData.data.taskId,
       });

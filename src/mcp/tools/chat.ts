@@ -28,6 +28,7 @@ export interface ChatToolArgs {
   decision?: 'reconnect' | 'followup' | 'override';
   previouslyConnected?: boolean;
   tagId?: number; // Engineer expertise level: 1=Engineer (1.7x), 4=Vibe Coder (1.5x), 5=General Purpose (1.0x, default)
+  agentIdentifier?: string; // Agent/client identifier (e.g., "Claude Code", "Codex", "Gemini")
 }
 
 export type ChatToolResult = CallToolResult;
@@ -75,6 +76,7 @@ export class ChatTool {
   private responseRejecter: ((reason: Error) => void) | null = null;
   private currentTaskId: string | null = null;
   private hasConnected: boolean = false;
+  private currentAgentIdentifier: string | null = null;
 
   constructor(
     tasksApi: TasksApi,
@@ -95,10 +97,14 @@ export class ChatTool {
    */
   async execute(args: ChatToolArgs): Promise<ChatToolResult> {
     try {
+      // Store agent identifier for this execution
+      this.currentAgentIdentifier = args.agentIdentifier || null;
+
       logger.info('Executing codevf-chat', {
         message: args.message,
         attachmentCount: args.attachments?.length || 0,
         continueTaskId: args.continueTaskId,
+        agentIdentifier: this.currentAgentIdentifier,
       });
 
       // Get or create a project for this task
@@ -178,6 +184,7 @@ export class ChatTool {
                 logger.info('Overriding existing chat task', { taskId: task.id });
                 await this.apiClient.request(`/api/cli/tasks/${task.id}/override`, {
                   method: 'POST',
+                  agentIdentifier: args.agentIdentifier,
                 });
                 logger.info('Chat task overridden successfully');
               } catch (err) {
@@ -368,6 +375,7 @@ export class ChatTool {
         assignmentTimeoutSeconds,
         parentActionId: parentTaskId, // Link to parent task for reference chain
         tagId: args.tagId, // Engineer expertise level (defaults to General Purpose if not specified)
+        agentIdentifier: args.agentIdentifier,
       });
 
       logger.info('Chat task created', { taskId: task.taskId });
@@ -381,7 +389,7 @@ export class ChatTool {
         logger.info('Uploading attachments', { count: args.attachments.length });
 
         try {
-          await this.uploadAttachments(task.taskId, args.attachments);
+          await this.uploadAttachments(task.taskId, args.attachments, args.agentIdentifier);
           logger.info('All attachments uploaded successfully');
         } catch (uploadError) {
           logger.error('Failed to upload attachments', uploadError);
@@ -450,7 +458,7 @@ export class ChatTool {
   /**
    * Upload attachments for a task
    */
-  private async uploadAttachments(taskId: string, attachments: FileAttachment[]): Promise<void> {
+  private async uploadAttachments(taskId: string, attachments: FileAttachment[], agentIdentifier?: string): Promise<void> {
     // Get auth token from environment or config
     const authToken = process.env.CODEVF_AUTH_TOKEN || 'dev-token';
 
@@ -461,6 +469,15 @@ export class ChatTool {
           mimeType: attachment.mimeType,
         });
 
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        };
+
+        if (agentIdentifier) {
+          headers['X-Agent-Identifier'] = agentIdentifier;
+        }
+
         const response = await axios.post(
           `${this.baseUrl}/api/cli/tasks/${taskId}/upload-file`,
           {
@@ -469,10 +486,7 @@ export class ChatTool {
             mimeType: attachment.mimeType,
           },
           {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              'Content-Type': 'application/json',
-            },
+            headers,
           }
         );
 
@@ -655,12 +669,14 @@ export class ChatTool {
             metadata: {
               source: 'claude-mcp',
               taskId,
+              agentIdentifier: this.currentAgentIdentifier || 'Unknown',
             },
           },
         })
       );
       logger.info('Claude sent message via WebSocket', {
         taskId,
+        agentIdentifier: this.currentAgentIdentifier,
         preview: content.substring(0, 50),
       });
     } else {
@@ -781,7 +797,10 @@ export class ChatTool {
   async notifyDisconnect(): Promise<void> {
     if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
       try {
-        logger.info('Sending disconnect notification to engineer', { taskId: this.currentTaskId });
+        logger.info('Sending disconnect notification to engineer', {
+          taskId: this.currentTaskId,
+          agentIdentifier: this.currentAgentIdentifier,
+        });
 
         // Send explicit disconnect notification
         this.wsConnection.send(
@@ -790,7 +809,8 @@ export class ChatTool {
             timestamp: new Date().toISOString(),
             payload: {
               endedBy: 'customer',
-              reason: 'Customer closed Claude Code session',
+              reason: 'Customer closed session',
+              agentIdentifier: this.currentAgentIdentifier || 'Unknown',
             },
           })
         );
