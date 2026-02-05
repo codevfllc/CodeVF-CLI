@@ -144,6 +144,41 @@ function createCvfSlashCommand(): boolean {
   }
 }
 
+function createCvfCommandFile(commandsDir: string, label: string): boolean {
+  try {
+    const cvfCommandPath = path.join(commandsDir, 'cvf.md');
+
+    if (!fs.existsSync(commandsDir)) {
+      fs.mkdirSync(commandsDir, { recursive: true, mode: 0o755 });
+    }
+
+    if (fs.existsSync(cvfCommandPath)) {
+      console.log(chalk.green(`✅ /cvf command already exists for ${label}`));
+      return true;
+    }
+
+    fs.writeFileSync(cvfCommandPath, commandContent, { mode: 0o644 });
+    console.log(chalk.green(`✅ Created /cvf command for ${label}`));
+    return true;
+  } catch (error) {
+    console.log(
+      chalk.yellow(`⚠️  Could not create /cvf command for ${label}:`),
+      (error as Error).message
+    );
+    return false;
+  }
+}
+
+function createCvfCommandForCodex(): boolean {
+  const commandsDir = path.join(os.homedir(), '.codex', 'commands');
+  return createCvfCommandFile(commandsDir, 'Codex');
+}
+
+function createCvfCommandForGemini(configPath: string): boolean {
+  const commandsDir = path.join(path.dirname(configPath), 'commands');
+  return createCvfCommandFile(commandsDir, 'Gemini');
+}
+
 /**
  * Auto-configure Codex with MCP server
  */
@@ -189,6 +224,7 @@ async function autoConfigureCodex(): Promise<boolean> {
       } else {
         console.log(chalk.green('✅ CodeVF MCP server already configured for Codex!'));
       }
+      createCvfCommandForCodex();
       return true;
     }
 
@@ -208,6 +244,7 @@ async function autoConfigureCodex(): Promise<boolean> {
 
     fs.writeFileSync(configPath, nextContent, { mode: 0o600 });
     console.log(chalk.green('✅ Codex configured successfully!'));
+    createCvfCommandForCodex();
     return true;
   } catch (error) {
     console.error(chalk.red('\n❌ Codex auto-config failed:'), (error as Error).message);
@@ -311,6 +348,7 @@ async function autoConfigureGemini(): Promise<boolean> {
 
     if (config[mcpKey].codevf) {
       console.log(chalk.green('✅ CodeVF MCP server already configured for Gemini!'));
+      createCvfCommandForGemini(configPath);
       return true;
     }
 
@@ -326,6 +364,7 @@ async function autoConfigureGemini(): Promise<boolean> {
 
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { mode: 0o600 });
     console.log(chalk.green('✅ Gemini configured successfully!'));
+    createCvfCommandForGemini(configPath);
     return true;
   } catch (error) {
     console.error(chalk.red('\n❌ Gemini auto-config failed:'), (error as Error).message);
