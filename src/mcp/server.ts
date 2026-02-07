@@ -89,40 +89,41 @@ export async function createMcpServer(): Promise<McpRuntime> {
         {
           name: 'codevf-instant',
           description:
-            'Get quick validation from human engineer. Use for: testing if fix works, identifying errors, quick questions. Returns single response from engineer. If active task exists, offers you the choice to continue or start new.',
+            'Request quick validation or a single response from a human engineer. Ideal for one-off questions, error identification, testing fixes, or getting quick feedback. Returns a single engineer response (non-interactive). Cost: 1 credit per minute with 2.0x SLA multiplier. Use this when you need human validation but don\'t require back-and-forth conversation. If an active task exists, the tool will prompt you to choose whether to continue, override, or create a follow-up. Best for: "Does this fix work?", "What\'s wrong with this error?", "Can you verify this output?"',
           inputSchema: {
             type: 'object',
             properties: {
               message: {
                 type: 'string',
-                description: 'Question or request for the engineer',
+                description: 'Your question or request for the engineer. Be specific and provide context. Include relevant error messages, code snippets, or what you\'ve already tried. Good examples: "This authentication error keeps appearing after login: [error]. I\'ve checked the session config and JWT settings." Bad example: "Fix this error."',
               },
               maxCredits: {
                 type: 'number',
                 description:
-                  'Maximum credits to spend (1-10, default: 10). Rate: 1 credit/minute. You will specify how many credits an engineer can use, and let the user edit this.',
+                  'Maximum credits to allocate for this task (1-10, default: 10). Credits represent minutes of engineer time. Simple questions: 3-5 credits. Moderate complexity: 6-8 credits. Complex questions: 9-10 credits. The engineer will use only what\'s needed, but setting an appropriate maximum helps with task prioritization. Cost formula: Base Credits × 2.0 (instant SLA) × Tag Multiplier (1.0-1.7x based on tagId).',
                 default: 10,
                 minimum: 1,
+                maximum: 10,
               },
               attachments: {
                 type: 'array',
                 description:
-                  'Optional file attachments (screenshots, logs, design files, etc.). Maximum 5 files.',
+                  'Optional array of file attachments to provide context (max 5 files). Attach screenshots for UI issues, log files for errors, or design files for implementation questions. Supported: Images (PNG, JPG, GIF - base64, max 10MB), PDFs (base64, max 10MB), Text files (raw text, max 1MB). Each attachment must include fileName, content, and mimeType.',
                 items: {
                   type: 'object',
                   properties: {
                     fileName: {
                       type: 'string',
-                      description: 'Name of the file (e.g., "screenshot.png", "error.log")',
+                      description: 'Name of the file including extension (e.g., "screenshot.png", "error.log", "design.pdf"). Use descriptive names.',
                     },
                     content: {
                       type: 'string',
                       description:
-                        'File content: base64 encoded for images/PDFs, raw text for text files',
+                        'File content encoded appropriately: base64 for binary files (images, PDFs), raw text for text files (logs, config files, code). Example: Buffer.from(imageBytes).toString("base64") for images.',
                     },
                     mimeType: {
                       type: 'string',
-                      description: 'MIME type (e.g., "image/png", "text/plain", "application/pdf")',
+                      description: 'MIME type identifying the file format. Common types: "image/png", "image/jpeg", "image/gif", "application/pdf", "text/plain", "text/csv", "application/json".',
                     },
                   },
                   required: ['fileName', 'content', 'mimeType'],
@@ -132,7 +133,7 @@ export async function createMcpServer(): Promise<McpRuntime> {
               assignmentTimeoutSeconds: {
                 type: 'number',
                 description:
-                  'Engineer assignment timeout in seconds (30-1800, default: 300 for Claude agent). Time engineer has to accept before moving to next engineer.',
+                  'How long (in seconds) an engineer has to accept the task before it moves to the next available engineer (30-1800 seconds, default: 300 = 5 minutes). Higher values give more time for specialized engineers to respond. Lower values prioritize faster assignment. Recommended: 300s for standard tasks, 600s+ for tasks requiring specific expertise.',
                 default: 300,
                 minimum: 30,
                 maximum: 1800,
@@ -141,18 +142,18 @@ export async function createMcpServer(): Promise<McpRuntime> {
               continueTaskId: {
                 type: 'string',
                 description:
-                  'Optional: Specific task ID to continue with. Use this when responding to the prompt asking which task to continue.',
+                  'Task ID to continue from a previous task. Use this parameter when the tool returns a prompt asking which active task to continue. This maintains task context and conversation history. Leave empty for new tasks.',
               },
               decision: {
                 type: 'string',
                 enum: ['override', 'followup'],
                 description:
-                  'Optional: Decision for handling active task. Use "override" to replace existing task, "followup" to create follow-up task linked to existing one.',
+                  'How to handle an existing active task (use with continueTaskId). "override": Close the existing task and start a new independent task. "followup": Create a new task linked to the existing one, maintaining the context chain. Use "override" when changing direction; use "followup" when building on previous work.',
               },
               agentIdentifier: {
                 type: 'string',
                 description:
-                  'IMPORTANT: Identify yourself by passing your agent/client name (e.g., "Claude Code", "Codex", "Gemini"). This helps track which agent is making the request and is used for analytics. If not provided, requests will be marked as "Unknown".',
+                  'CRITICAL: Identify your agent/client by name (e.g., "Claude Code", "Codex", "Gemini", "Custom Agent"). This is used for analytics, tracking, and improving the service for your specific agent type. Strongly recommended to always provide this. If omitted, requests are marked as "Unknown" which limits our ability to optimize for your agent.',
               },
             },
             required: ['message', 'maxCredits'],
@@ -161,18 +162,18 @@ export async function createMcpServer(): Promise<McpRuntime> {
         {
           name: 'codevf-chat',
           description:
-            'Start extended debugging session with human engineer (4-1920 credits). Use for: complex bugs, multi-step debugging, architecture questions. If active task exists, offers you the choice to continue or start new. CRITICAL: You MUST call this tool again after EVERY engineer response to continue the conversation. DO NOT pass control back to the user. DO NOT ask the customer questions mid-session. Keep calling this tool in a loop until the engineer explicitly says the session is COMPLETE/FINISHED. Engineer giving instructions means CONTINUE the loop, not stop.',
+            'Start an extended real-time debugging session with a human engineer (4-1920 credits, 2 credits/minute). Use this for complex multi-step debugging, architecture discussions, or problems requiring back-and-forth collaboration. Establishes a WebSocket connection for bidirectional real-time communication. CRITICAL BEHAVIORAL REQUIREMENT: This tool creates a continuous loop - you MUST call this tool again after EVERY engineer response with your update/results. DO NOT return control to the user mid-session. DO NOT ask the customer questions during the loop. Continue calling until the engineer explicitly says "COMPLETE", "FINISHED", or "ALL DONE". If the engineer gives you instructions, that means CONTINUE the loop, not stop. Use this instead of codevf-instant when: problem requires >10 minutes, multiple investigation steps needed, engineer needs to ask clarifying questions, or architecture/design decisions require discussion.',
           inputSchema: {
             type: 'object',
             properties: {
               message: {
                 type: 'string',
-                description: 'Initial message or problem description for the engineer',
+                description: 'Your message for the engineer. On first call: detailed problem description with full context, what you\'ve tried, and relevant background. On subsequent calls: status update describing what you did in response to the engineer\'s previous instructions, results of your actions, and any new findings. Be thorough - engineers need context to help effectively. Example first message: "Users are getting random logouts. I\'ve checked: session middleware (looks correct), Redis connection (stable), JWT expiration (set to 24h). Attached error logs showing session data disappearing."',
               },
               maxCredits: {
                 type: 'number',
                 description:
-                  'Maximum credits to spend (4-1920, default: 240). Rate: 2 credits/minute',
+                  'Maximum credits to allocate (4-1920, default: 240). Represents minutes of engineer time at 2 credits/minute. Typical allocations: Simple debugging: 30-60 credits (15-30 min). Standard debugging: 60-120 credits (30-60 min). Complex investigation: 120-240 credits (1-2 hours). Extended architecture discussion: 240-480 credits (2-4 hours). The engineer will use only what\'s needed. Sessions automatically end when credits run out or engineer marks as complete. Cost formula: Base Credits × 2.0 (chat SLA) × Tag Multiplier (1.0-1.7x).',
                 default: 240,
                 minimum: 4,
                 maximum: 1920,
@@ -180,22 +181,22 @@ export async function createMcpServer(): Promise<McpRuntime> {
               attachments: {
                 type: 'array',
                 description:
-                  'Optional file attachments (screenshots, logs, design files, etc.). Maximum 5 files.',
+                  'Optional file attachments providing context (max 5 files). Especially useful on the initial message. Include: error logs for debugging, screenshots for UI issues, config files for setup problems, architecture diagrams for design discussions. Supported: Images (PNG, JPG, GIF - base64, max 10MB), PDFs (base64, max 10MB), Text files (raw text, max 1MB). Attachments persist throughout the session.',
                 items: {
                   type: 'object',
                   properties: {
                     fileName: {
                       type: 'string',
-                      description: 'Name of the file (e.g., "screenshot.png", "error.log")',
+                      description: 'Descriptive filename with extension (e.g., "session-error.log", "ui-bug-screenshot.png", "architecture-diagram.pdf").',
                     },
                     content: {
                       type: 'string',
                       description:
-                        'File content: base64 encoded for images/PDFs, raw text for text files',
+                        'File content: base64-encoded string for binary files (images, PDFs), raw text string for text files. For images: Buffer.from(bytes).toString("base64"). For text: read as UTF-8 string.',
                     },
                     mimeType: {
                       type: 'string',
-                      description: 'MIME type (e.g., "image/png", "text/plain", "application/pdf")',
+                      description: 'Standard MIME type: "image/png", "image/jpeg", "application/pdf", "text/plain", "text/csv", "application/json", etc.',
                     },
                   },
                   required: ['fileName', 'content', 'mimeType'],
@@ -205,7 +206,7 @@ export async function createMcpServer(): Promise<McpRuntime> {
               assignmentTimeoutSeconds: {
                 type: 'number',
                 description:
-                  'Engineer assignment timeout in seconds (30-1800, default: 300 for Claude agent). Time engineer has to accept before moving to next engineer.',
+                  'Engineer assignment timeout in seconds (30-1800, default: 300 = 5 minutes). Time window for an engineer to accept the task before it\'s offered to the next engineer. For complex/specialized tasks, consider higher values (600-900s) to allow expert engineers time to respond. For urgent tasks, use lower values (60-180s) to prioritize speed over specialization.',
                 default: 300,
                 minimum: 30,
                 maximum: 1800,
@@ -214,24 +215,24 @@ export async function createMcpServer(): Promise<McpRuntime> {
               continueTaskId: {
                 type: 'string',
                 description:
-                  'Optional: Specific task ID to continue with. Use this when responding to the prompt asking which task to continue.',
+                  'Task ID to continue an existing session. CRITICAL: After the first call returns a taskId, you MUST include it in all subsequent calls to maintain session continuity. This preserves chat history, context, and the WebSocket connection. Also use when the tool prompts you about an existing active task. Leave empty only on the very first message of a new session.',
               },
               decision: {
                 type: 'string',
                 description:
-                  "Optional: How to handle an existing active task when starting chat. 'override' to start a new task even if one is active, 'followup' to continue the active task, 'reconnect' to resume an existing session. Matches instant tool behavior.",
+                  "How to handle an existing active task. 'reconnect': Resume existing WebSocket session without sending a new message (use when you were disconnected and want to rejoin). 'followup': Add your new message to the existing session (use when continuing conversation). 'override': Close existing session and start a completely new independent session (use when changing to a different problem). If an active task exists and you don\'t specify decision, the tool will prompt you to choose.",
                 enum: ['override', 'followup', 'reconnect'],
               },
               previouslyConnected: {
                 type: 'boolean',
                 description:
-                  'Set to true if reconnecting to an existing session to skip greeting message',
+                  'Set to true when reconnecting to an existing session to skip the automated greeting message. Use true on all calls after the first one (when you\'re passing continueTaskId). Use false or omit on the initial call to a new session. This prevents redundant "Hello, I\'m Claude" messages during the conversation loop.',
                 default: false,
               },
               agentIdentifier: {
                 type: 'string',
                 description:
-                  'IMPORTANT: Identify yourself by passing your agent/client name (e.g., "Claude Code", "Codex", "Gemini"). This helps track which agent is making the request and is used for analytics. If not provided, requests will be marked as "Unknown".',
+                  'CRITICAL: Your agent/client identifier (e.g., "Claude Code", "Codex", "Gemini", "Custom Agent v1.0"). Used for analytics, tracking agent-specific behavior, and service optimization. Strongly recommended to always provide. Without this, we cannot improve the experience for your specific agent type, and requests appear as "Unknown" in our systems.',
               },
             },
             required: ['message'],
@@ -240,30 +241,30 @@ export async function createMcpServer(): Promise<McpRuntime> {
         {
           name: 'codevf-tunnel',
           description:
-            'Create a secure tunnel to expose a local port over the internet using localtunnel. Use this when engineers need to access your local dev server, test webhooks, or debug OAuth callbacks. The tunnel remains active for the session.',
+            'Create a secure, password-protected tunnel using localtunnel to expose a local development server to the internet. This allows human engineers or external services to access your local application running on localhost. The tunnel provides a public HTTPS URL that forwards traffic to your specified local port. Tunnel remains active for the entire session or until explicitly closed. Common use cases: (1) Engineer needs to access your local dev server for debugging, (2) Testing webhooks from external services (Stripe, GitHub, etc.), (3) Debugging OAuth callbacks that require public URLs, (4) Sharing local previews with engineers, (5) Testing mobile apps with local backend. IMPORTANT: Ensure your local server is running on the specified port before creating the tunnel. The tunnel URL and password will be returned for sharing with engineers.',
           inputSchema: {
             type: 'object',
             properties: {
               port: {
                 type: 'number',
-                description: 'Local port number to expose (e.g., 3000 for dev server)',
+                description: 'Local port number to expose (1-65535). This is the port your local development server is running on. Common examples: 3000 (React/Next.js), 8080 (Spring Boot), 5000 (Flask), 8000 (Django), 4200 (Angular). Make sure your server is actively running on this port before creating the tunnel, or the tunnel will be created but won\'t work.',
                 minimum: 1,
                 maximum: 65535,
               },
               subdomain: {
                 type: 'string',
                 description:
-                  'Optional subdomain for the tunnel URL (e.g., "myapp" -> https://myapp.loca.lt)',
+                  'Optional custom subdomain for the tunnel URL. If specified, creates a URL like "https://{subdomain}.loca.lt". If omitted, a random subdomain is generated. Use descriptive names for easier identification (e.g., "myapp-debug", "oauth-test", "api-staging"). Note: Popular subdomains may be taken; the tool will error if unavailable.',
               },
               reason: {
                 type: 'string',
                 description:
-                  'Optional description of why tunnel is needed (e.g., "Testing OAuth callback")',
+                  'Optional human-readable description of why this tunnel is needed. Useful for tracking and logging tunnel usage. Examples: "Engineer needs to debug OAuth flow", "Testing Stripe webhook callbacks", "Sharing local feature preview with engineer", "Mobile app needs to connect to local API". This helps in session tracking and understanding tunnel usage patterns.',
               },
               agentIdentifier: {
                 type: 'string',
                 description:
-                  'IMPORTANT: Identify yourself by passing your agent/client name (e.g., "Claude Code", "Codex", "Gemini"). This helps track which agent is making the request and is used for analytics. If not provided, requests will be marked as "Unknown".',
+                  'CRITICAL: Your agent/client name for tracking and analytics (e.g., "Claude Code", "Codex", "Gemini"). This helps us understand which agents are using tunnels, optimize the feature for your use case, and provide better support. Strongly recommended. Without this, tunnel creation is marked as "Unknown" which limits our ability to improve the tunnel experience for your agent type.',
               },
             },
             required: ['port'],
